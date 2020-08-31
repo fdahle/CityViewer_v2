@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset=utf-8>
+  <title>CityViewer</title>
+
+  <script src="js/ext/three.js"></script>
+  <script src="js/ext/OrbitControls.js"></script>
+  <script src="js/ext/FaceNormalsHelper.js"></script>
+  <script src="js/ext/jquery-3.3.1.min.js"></script>
+  <script src="js/ext/earcut.js"></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-contextmenu/2.7.1/jquery.contextMenu.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-contextmenu/2.7.1/jquery.ui.position.js"></script>
+  <script src="https://use.fontawesome.com/XXX.js" SameSite="none Secure"></script>
+
+  <script src="js/document.js"></script>
+  <script src="js/viewer.js"></script>
+  <script src="js/menu.js"></script>
+  <script src="js/functions.js"></script>
+  <script src="js/values.js"></script>
+
+  <link href="https://fonts.googleapis.com/css?family=Roboto&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jquery-contextmenu/2.7.1/jquery.contextMenu.min.css">
+  <link rel="stylesheet" href="css/main.css">
+  <link rel="stylesheet" href="css/viewer.css">
+  <link rel="stylesheet" href="css/menu.css">
+  <link rel="stylesheet" href="css/settings.css">
+  <link rel="stylesheet" href="css/controls.css">
+
+</head>
+
+<body>
+
+  <div id="viewer"></div>
+  <div id="viewer_axis"></div>
+
+  <div id="viewerMenu">
+  </div>
+
+  <div id="dropper">
+    <form id="dropbox" class="my-form">
+      <img class="logo" src="img/cityjson_logo.svg" width="100">
+      <p class="dbText">Drop your file here,<br> or click to open</p>
+      <input type="file" id="fileElem" accept=".json" onchange="handleFiles(this.files)" multiple style="display: none">
+    </form>
+  </div>
+
+  <div id="filesBox" style="display: none">
+    <div id="filesCaption">
+      <span>Files</span>
+      <i id="filesHideButton" onclick="hideFiles()" class="fa fa-eye-slash"></i>
+    </div>
+    <div id="filesContent">
+      <table id="filesTable">
+      </table>
+    </div>
+  </div>
+
+  <div id="objectsBox" style="display: none">
+    <div id="objectsCaption">Objects</div>
+    <div id="objectsContent">
+      <table id="objectsTable">
+      </table>
+    </div>
+  </div>
+
+  <div id="attributesBox" style="display: none">
+    <div id="attributesCaption">Attributes</div>
+    <div id="attributesContent">
+      <table id="attributesTable">
+      </table>
+    </div>
+  </div>
+
+  <div id="settingsFileMenu" style="display: none"></div>
+
+  <div id="statisticsMenu" style="display: none">
+    <div id="statisticsCaption"></div>
+    <table>
+      <tr>
+        <td class="td_field">file size</td>
+        <td id="td_stat_fileSize" class="td_val"></td>
+      </tr>
+      <tr>
+        <td class="td_field">number of objects</td>
+        <td id="td_stat_numObjects" class="td_val"></td>
+      </tr>
+      <tr>
+        <td class="td_field">number of vertices</td>
+        <td id="td_stat_numVertices" class="td_val"></td>
+      </tr>
+      <tr>
+        <td class="td_field">number of faces</td>
+        <td id="td_stat_numFaces" class="td_val"></td>
+      </tr>
+
+
+      <tr>
+        <td class="td_field">min X</td>
+        <td id="td_stat_minX" class="td_val"></td>
+      </tr>
+      <tr>
+        <td class="td_field">max X</td>
+        <td id="td_stat_maxX" class="td_val"></td>
+      </tr>
+      <tr>
+        <td class="td_field">min Y</td>
+        <td id="td_stat_minY" class="td_val"></td>
+      </tr>
+      <tr>
+        <td class="td_field">max Y</td>
+        <td id="td_stat_maxY" class="td_val"></td>
+      </tr>
+      <tr>
+        <td class="td_field">min Z</td>
+        <td id="td_stat_minZ" class="td_val"></td>
+      </tr>
+      <tr>
+        <td class="td_field">max Z</td>
+        <td id="td_stat_maxZ" class="td_val"></td>
+      </tr>
+
+
+
+    </table>
+  </div>
+
+  <div id="tableMenu" style="display: none">
+  </div>
+
+  <div id="settingsBox">
+    <button class="btn" onclick="toggleSettings()"><i class="fa fa-cog"></i> Settings</button>
+  </div>
+
+  <div id="settingsMenu" style="display: none">
+    <div id="settingsCaption">
+      <span>Settings</span>
+      <i id="settingsCloseButton" onclick="toggleSettings()" class="fa fa-times"></i>
+    </div>
+    <div class="tab">
+      <button id="button_settings_General" class="tablinks active" onclick="toggleSettingsTab('settings_General', event)">General</button>
+      <button id="button_settings_Viewer" class="tablinks" onclick="toggleSettingsTab('settings_Viewer', event)">Viewer</button>
+      <button id="button_settings_Colour" class="tablinks" onclick="toggleSettingsTab('settings_Colour', event)">Colours</button>
+    </div>
+
+    <div class="tabcontent" id="settings_General">
+      <div class="generalLine">
+        <label>display log:</label>
+        <label class="switch">
+          <input class="settingsCheck" type="checkbox" id="logBox" onclick="toggleLog()">
+          <span class="slider round"></span>
+        </label>
+      </div>
+      <div class="generalLine">
+        <label>verify json-files:</label>
+        <label class="switch">
+          <input class="settingsCheck" type="checkbox" id="logBox" onclick="toggleLog()">
+          <span class="slider round"></span>
+        </label>
+      </div>
+    </div>
+
+    <div class="tabcontent" id="settings_Viewer" style="display: none">
+      <div class="generalLine">
+        <label>show edges:</label>
+        <label class="switch">
+          <input type="checkbox" id="wireframeBox" onclick="toggleWireframe(this.checked)">
+          <span class="slider round"></span>
+        </label>
+      </div>
+      <div class="generalLine">
+        <label>show normals:</label>
+        <label class="switch">
+          <input type="checkbox" id="normalsBox" onclick="toggleNormals(this.checked)">
+          <span class="slider round"></span>
+        </label>
+      </div>
+      <div class="generalLine">
+        <label>show axis:</label>
+        <label class="switch">
+          <input type="checkbox" id="axisBox" onclick="toggleAxis()">
+          <span class="slider round"></span>
+        </label>
+      </div>
+    </div>
+
+    <div class="tabcontent" id="settings_Colour" style="display: none">
+      <div id="colour_background_caption" class="colour_caption">Viewer</div>
+      <table "colour_background_table">
+        <tr>
+          <td>Background</td>
+          <td class='td_colour'><input type='color' class='input_set_colour' oninput='changeColour(this)' id='colour_background'></td>
+        </tr>
+        <tr>
+          <td>Edges</td>
+          <td class='td_colour'><input type='color' class='input_set_colour' oninput='changeColour(this)' id='colour_edges'></td>
+        </tr>
+        <tr>
+          <td>Normals</td>
+          <td class='td_colour'><input type='color' class='input_set_colour' oninput='changeColour(this)' id='colour_normals'></td>
+        </tr>
+      </table>
+      <div id="colour_cityjson_caption" class="colour_caption">Default CityJSON Objects</div>
+      <table "colour_cityjson_table">
+        <tr>
+          <td>Building</td>
+          <td class='td_colour'><input type='color' class='input_set_colour' oninput='changeColour(this)' id='colour_building'></td>
+        </tr>
+        <tr>
+          <td>BuildingpartPart</td>
+          <td class='td_colour'><input type='color' class='input_set_colour' oninput='changeColour(this)' id='colour_buildingpart'></td>
+        </tr>
+        <tr>
+          <td>BuildingInstallation</td>
+          <td class='td_colour'><input type='color' class='input_set_colour' oninput='changeColour(this)' id='colour_buildinginstallation'></td>
+        </tr>
+        <tr>
+          <td>Bridge</td>
+          <td class='td_colour'><input type='color' class='input_set_colour' oninput='changeColour(this)' id='colour_bridge'></td>
+        </tr>
+        <tr>
+          <td>BridgePart</td>
+          <td class='td_colour'><input type='color' class='input_set_colour' oninput='changeColour(this)' id='colour_bridgepart'></td>
+        </tr>
+        <tr>
+          <td>BridgeInstallation</td>
+          <td class='td_colour'><input type='color' class='input_set_colour' oninput='changeColour(this)' id='colour_bridgeinstallation'></td>
+        </tr>
+        <tr>
+          <td>BridgeConstructionElement</td>
+          <td class='td_colour'><input type='color' class='input_set_colour' oninput='changeColour(this)' id='colour_bridgeconstructionelement'></td>
+        </tr>
+        <tr>
+          <td>CityObjectGroup</td>
+          <td class='td_colour'><input type='color' class='input_set_colour' oninput='changeColour(this)' id='colour_cityobjectgroup'></td>
+        </tr>
+        <tr>
+          <td>CityFurniture</td>
+          <td class='td_colour'><input type='color' class='input_set_colour' oninput='changeColour(this)' id='colour_cityfurniture'></td>
+        </tr>
+        <tr>
+          <td>GenericCityObject</td>
+          <td class='td_colour'><input type='color' class='input_set_colour' oninput='changeColour(this)' id='colour_genericcityobject'></td>
+        </tr>
+        <tr>
+          <td>LandUse</td>
+          <td class='td_colour'><input type='color' class='input_set_colour' oninput='changeColour(this)' id='colour_landuse'></td>
+        </tr>
+        <tr>
+          <td>PlantCover</td>
+          <td class='td_colour'><input type='color' class='input_set_colour' oninput='changeColour(this)' id='colour_plantcover'></td>
+        </tr>
+        <tr>
+          <td>Railway</td>
+          <td class='td_colour'><input type='color' class='input_set_colour' oninput='changeColour(this)' id='colour_railway'></td>
+        </tr>
+        <tr>
+          <td>Road</td>
+          <td class='td_colour'><input type='color' class='input_set_colour' oninput='changeColour(this)' id='colour_road'></td>
+        </tr>
+        <tr>
+          <td>SolitaryVegetationObject</td>
+          <td class='td_colour'><input type='color' class='input_set_colour' oninput='changeColour(this)' id='colour_solitaryvegetationobject'></td>
+        </tr>
+        <tr>
+          <td>TINRelief</td>
+          <td class='td_colour'><input type='color' class='input_set_colour' oninput='changeColour(this)' id='colour_tinrelief'></td>
+        </tr>
+        <tr>
+          <td>TransportSquare</td>
+          <td class='td_colour'><input type='color' class='input_set_colour' oninput='changeColour(this)' id='colour_transportsquare'></td>
+        </tr>
+        <tr>
+          <td>Tunnel</td>
+          <td class='td_colour'><input type='color' class='input_set_colour' oninput='changeColour(this)' id='colour_tunnel'></td>
+        </tr>
+        <tr>
+          <td>TunnelPart</td>
+          <td class='td_colour'><input type='color' class='input_set_colour' oninput='changeColour(this)' id='colour_tunnelpart'></td>
+        </tr>
+        <tr>
+          <td>TunnelInstallation</td>
+          <td class='td_colour'><input type='color' class='input_set_colour' oninput='changeColour(this)' id='colour_tunnelinstallation'></td>
+        </tr>
+        <tr>
+          <td>WaterBody</td>
+          <td class='td_colour'><input type='color' class='input_set_colour' oninput='changeColour(this)' id='colour_waterbody'></td>
+        </tr>
+      </table>
+    </div>
+
+  </div>
+
+
+  <div id="infoBox">
+    <p><a href="https://github.com/tudelft3d/CityJSON-viewer/" target="_blank">GitHub repository</a></p>
+  </div>
+
+  <div id="overlayBox" onclick="clickOverlay()"></div>
+
+  <div class="loader" id="loader" style="display: none"></div>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      initDocument();
+    })
+  </script>
+
+</body>
+
+
+</html>
