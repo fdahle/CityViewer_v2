@@ -1,0 +1,105 @@
+#settingsBox{
+  position: absolute;
+  right: 10px;
+  top: 10px;
+}
+
+#settingsMenu{
+  position: absolute;
+  top: 30px;
+  left: calc(50% - 205px);
+  height: 600px;
+  width: 400px;
+  background-color: white;
+  border: 1px solid darkgray;
+  padding: 5px;
+  box-shadow: 10px 10px 23px 0px rgba(158,158,158,1);
+  z-index: 2;
+}
+
+#settingsCaption{
+  font-size: 18px;
+  height: 30px;
+  line-height: 30px;
+  margin-left: 10px;
+  margin-right: 10px;
+  border-bottom: 1px solid lightgray;
+  margin-bottom: 10px;
+}
+
+#settingsCloseButton{
+  float: right;
+  margin: 5px;
+  margin-right: -5px;
+  cursor: pointer;
+}
+
+.generalLine{
+  margin-left: 25px;
+  height: 40px;
+}
+
+.tab {
+  overflow: hidden;
+  border: 1px solid #ccc;
+  background-color: #f1f1f1;
+  margin-left: 10px;
+  margin-right: 10px;
+  width: calc(100% - 20px);
+}
+
+.tablinks{
+  width: calc(100% / 3);
+}
+
+.tab button {
+  background-color: inherit;
+  float: left;
+  border: none;
+  outline: none;
+  cursor: pointer;
+  padding: 14px 16px;
+  transition: 0.3s;
+}
+
+/* Change background color of buttons on hover */
+.tab button:hover {
+  background-color: #ddd;
+}
+
+/* Create an active/current tablink class */
+.tab button.active {
+  background-color: #ccc;
+}
+
+
+.tabcontent{
+  height: calc(100% - 110px);
+  width: calc(100% - 18px); /* border is 1px */
+  overflow-y: auto;
+  margin-left: 10px;
+  margin-top: 10px;
+}
+
+.td_colour{
+  display:inline-block;
+  height: 19px;
+  width: 40px;
+  border-radius: 30px;
+  vertical-align: -webkit-baseline-middle;
+  margin-right: 10px;
+  border: 1px solid lightgray;
+}
+
+.input_set_colour{
+  opacity: 0
+}
+
+.colour_caption{
+  margin-top: 15px;
+  font-weight: bold;
+}
+
+#colour_background_caption{
+  margin-top: 5px;
+}
