@@ -1,294 +1,859 @@
 //
-//only here is document.getElementById allowed
+//connection to the website
+//only here is the js interacts with the document
+//document.getElementById and locastore only allowed here
 //
 
 async function initDocument() {
 
-  //init viewer
-  var viewer = document.getElementById("viewer")
-  await initViewer(viewer)
+  //remove no js warning
+  document.getElementById("warning_js").style.display = "none";
 
-  //init axisHelper
-  var viewer_axis = document.getElementById("viewer_axis")
-  initAxis(viewer_axis)
+  //check if local storage is defined
+  var bool = checkLocalStorage();
+  if (bool){
+    document.getElementById("warning_ls").style.display = "none";
+  } else {
+    return
+  }
+
+  //init viewer
+  var viewer = document.getElementById("viewer");
+  await initViewer(viewer);
 
   //init events for viewer
-  initViewerEvents(viewer)
+  initViewerEvents();
+
+  //init axisHelper
+  var viewer_axis = document.getElementById("viewer_axis");
+  initAxis(viewer_axis);
+
+  //init dropbox
+  var dropbox = document.getElementById("dropbox");
+  var inputFile = document.getElementById("fileElem");
+  initDropbox(dropbox, inputFile);
 
   //init events
-  var dropbox = document.getElementById("dropbox");
-  var inputFile = document.getElementById("fileElem")
-  initEvents(dropbox, inputFile)
+  initEvents();
 
-  //init Settings
-  initSettings()
+  //check localStorage
+  initLocalStorage();
 
+  //init the settings
+  initSettings();
+
+  toggleText(localStorage.getItem("settings_language"));
 }
 
-//add an entry to file menu
-function addToFileMenu(id) {
+//init all actions for dropbox
+// Dropbox functions
+function initDropbox(dropbox, inputFile) {
 
-  //make div visible
-  document.getElementById("filesBox").style.display = 'block'
-
-  //get menu element
-  menu = document.getElementById("filesTable")
-
-  //get json Name
-  var jsonName = jsonIdDict[id]
-
-  var tr = document.createElement('tr');
-  tr.setAttribute("id", "file_" + id);
-
-  //create checkbox
-  var td = document.createElement('td');
-  td.classList.add("td_files_check")
-  var checkBox = document.createElement('input');
-  checkBox.type = "checkbox";
-  checkBox.checked = true;
-  checkBox.style.marginRight = "7px";
-  checkBox.onchange = function(){
-    //get the id of the object to hide
-    var jsonId = this.parentElement.parentElement.id;
-    jsonId = jsonId.split("_")[1]
-    toggleJSON(jsonId)
+  function highlight(e) {
+    dropbox.classList.add('highlight')
   }
 
-  td.appendChild(checkBox)
-  tr.appendChild(td)
-
-  //create the json text
-  var td = document.createElement('td');
-  td.classList.add("td_objects_text")
-  var jsonText = document.createElement("span");
-  jsonText.innerText = jsonName;
-  td.append(jsonText)
-  tr.append(td)
-
-  //add to menu
-  menu.append(tr)
-}
-
-//delete an entry from the file menu
-function removeFromFileMenu(jsonid) {
-
-  //get menu element and remove
-  var elem = document.getElementById("file_" + jsonid)
-  elem.remove();
-
-  //count number of children and if zero hide the menu
-  var childCount = document.getElementById("filesTree").childElementCount;
-  if (childCount == 0) {
-    //make div visible
-    document.getElementById("filesBox").style.display = 'none'
+  function unhighlight(e) {
+    dropbox.classList.remove('highlight')
   }
 
+  function dragenter(e) {
+    e.stopPropagation();
+    e.preventDefault();
+  }
+
+  function dragover(e) {
+    e.stopPropagation();
+    e.preventDefault();
+  }
+
+  function drop(e) {
+    e.stopPropagation();
+    e.preventDefault();
+    var dt = e.dataTransfer;
+    var files = dt.files;
+    handleFiles(files);
+  }
+
+  function clickDropBox(e) {
+    inputFile.click()
+  }
+
+  dropbox.addEventListener("dragenter", dragenter, false);
+  dropbox.addEventListener("dragover", dragover, false);
+  dropbox.addEventListener("drop", drop, false);
+  dropbox.addEventListener("click", clickDropBox, false);
+
+  ['dragover'].forEach(eventName => {
+    dropbox.addEventListener(eventName, highlight, false)
+  });
+
+  ['dragleave', 'drop'].forEach(eventName => {
+    dropbox.addEventListener(eventName, unhighlight, false)
+  });
+
 }
 
-//add objects to the file menu
-function addToObjectMenu(jsonid, objects) {
+//init the events for the DOM elements
+function initEvents() {
 
-  //make div visible
-  document.getElementById("objectsBox").style.display = ''
+//monitor the size of the files box
+var filesBox = document.getElementById("files");
+new ResizeObserver(function(){
+  storeBoxSize(filesBox)
+}).observe(filesBox);
 
-  //get menu element
-  var menu = document.getElementById("objectsTable")
+//monitor the size of the objects box
+var objectsBox = document.getElementById("objects");
+new ResizeObserver(function(){
+  storeBoxSize(objectsBox)
+}).observe(objectsBox);
 
-  for (var i = 0; i < objects.length; i++) {
+//monitor the size of the objects box
+var attributesBox = document.getElementById("attributes");
+new ResizeObserver(function(){
+  storeBoxSize(attributesBox)
+}).observe(attributesBox);
 
-    var obj = objects[i];
+}
 
-    var extraPadding = undefined
-    if (obj.jsonParent != undefined){
-      console.log(obj.jsonParent);
-      var parent = undefined
-      console.log("CHILD", menu.children);
-      for (var j = 0; j < menu.children.length; j++){
-        var child = menu.children[j]
-        console.log(child.jsonId, obj.jsonId);
-        console.log(child.objName, obj.jsonParent);
-        if (child.jsonId == obj.jsonId && child.objName==obj.jsonParent){
-          parent = child;
-          break
-        }
-      }
+//init the local storage variables
+function initLocalStorage() {
 
-      extraPadding = parent.firstChild.style.paddingLeft
+  for (var key in globalSettings){
+    if (localStorage.getItem(key) === null){
+      localStorage.setItem(key, globalSettings[key]);
     }
-    console.log(extraPadding);
+  }
 
+  //viewer & cityObject colours
+  for (var key in ALLCOLOURS) {
+    if (localStorage.getItem("colour_" + key.toLowerCase()) === null) {
+      var elem = ALLCOLOURS[key].toString(16)
+      if (elem == 0) {
+        elem = "000000"
+      }
+      localStorage.setItem("colour_" + key.toLowerCase(), "0x" + elem);
+    }
+  }
+
+
+}
+
+//init all settings for the settings
+function initSettings() {
+
+  //general settings
+  if(localStorage.getItem("settings_log") == "true"){
+    document.getElementById("logBox").checked = true;
+    document.getElementById("logger").style.display="block";
+  } else {
+    document.getElementById("logBox").checked = false;
+  }
+  document.getElementById("logger").innerHTML="Welcome to the CityJSON-viewer.<br>";
+
+
+  if(localStorage.getItem("settings_navigation") == "true"){
+    document.getElementById("naviBox").checked = true;
+    document.getElementById("navigation").style.display="block";
+  } else {
+    document.getElementById("naviBox").checked = false;
+  }
+
+
+  if(localStorage.getItem("settings_verifyJSON") == "true"){
+    document.getElementById("verifyBox").checked = true;
+  } else {
+    document.getElementById("verifyBox").checked = false;
+  }
+  if(localStorage.getItem("settings_beautifyJSON") == "true"){
+    document.getElementById("beautifyBox").checked = true;
+  } else {
+    document.getElementById("beautifyBox").checked = false;
+  }
+  if(localStorage.getItem("settings_askDelete") == "true"){
+    document.getElementById("askDelBox").checked = true;
+  } else {
+    document.getElementById("askDelBox").checked = false;
+  }
+
+  //viewer settings
+  if(localStorage.getItem("viewer_edges") == "true"){
+    document.getElementById("wireframeBox").checked = true;
+  } else {
+    document.getElementById("wireframeBox").checked = false;
+  }
+
+  if(localStorage.getItem("viewer_normals") == "true"){
+    document.getElementById("normalsBox").checked = true;
+  } else {
+    document.getElementById("normalsBox").checked = false;
+  }
+
+  if(localStorage.getItem("viewer_axis") == "true"){
+    document.getElementById("axisBox").checked = true;
+  } else {
+    document.getElementById("axisBox").checked = false;
+  }
+
+
+  document.getElementById("selectMatSide").value = localStorage.getItem("viewer_materialSide");
+  document.getElementById("selectClick").value = localStorage.getItem("viewer_select");
+
+
+  //colour viewer settings
+  var table = document.getElementById("table_viewer_colour");
+  for (var i = 0, row; row = table.rows[i]; i++) {
+
+    //change input color
+    var input = row.children[1].children[0];
+    var colour = localStorage.getItem(input.id).replace("0x", "#");
+    input.value = colour;
+
+    //change td colour (for visual)
+    row.children[1].style.backgroundColor = colour;
+  }
+
+  //colour cityObject settings
+  var table = document.getElementById("table_cityObjects_colour");
+  for (var i = 0, row; row = table.rows[i]; i++) {
+
+    //change input color
+    var input = row.children[1].children[0];
+    var colour = localStorage.getItem(input.id).replace("0x", "#");
+    input.value = colour;
+
+    //change td colour (for visual)
+    row.children[1].style.backgroundColor = colour;
+
+  }
+
+
+}
+
+//create the different boxes
+function addToObjects(jsonId) {
+
+  //get the menu
+  var box = document.getElementById("objects");
+  var table = box.children[1].children[0];
+
+  function createObject(key, obj, jsonId, parentId){
+
+    //create necessary elements
     var tr = document.createElement('tr');
-    tr.setAttribute("id", "object_" + obj.uuid);
-    tr.setAttribute("json_id", obj.jsonId);
-    tr.setAttribute("objName", obj.objName)
-
-    //add checkbox
     var td = document.createElement('td');
-    td.classList.add("td_objects_check")
+    var div = document.createElement('div');
+
+    //set position of div dependend on the child level
+    if (parentId != null){
+      var parent = document.getElementById("tr_" + parentId);
+      var marg = parseFloat(parent.firstChild.firstChild.style.marginLeft);
+      marg = marg + 15;
+      div.style.marginLeft = marg + "px";
+      var childLevel = parent.getAttribute("childLevel");
+      tr.setAttribute("childLevel", parseInt(childLevel) + 1);
+    } else {
+      div.style.marginLeft = "0px";
+      tr.setAttribute("childLevel", 0);
+    }
+
+    //set id for tr
+    tr.id = "tr_" + key;
+    tr.setAttribute("jsonId", jsonId);
+    tr.onclick = function(e){
+      //this click event should not be done if the checkbox or the chevron is selected
+      if (e.target.classList.contains("box_check")){
+        return
+      };
+      if (e.target.classList.contains("fa-chevron-down")){
+        return
+      };
+      if (e.target.classList.contains("fa-chevron-right")){
+        return
+      };
+      var jsonId = this.getAttribute("jsonId");
+      var objId = this.id.split("_")[1]
+
+      handleObjectSelect(jsonId, objId);
+    }
+
+    var chevDiv = document.createElement("div")
+    chevDiv.classList.add("objects_chev")
+    div.appendChild(chevDiv)
+
+    //checkbox for toggling File
     var checkBox = document.createElement('input');
     checkBox.type = "checkbox";
     checkBox.checked = true;
-    checkBox.style.marginRight = "7px";
-    checkBox.onchange = function(){
+    checkBox.onchange = function() {
       //get the id of the object to hide
-      var id = this.parentElement.parentElement.id;
-      id = id.split("_")[1]
-      toggleMesh(id)
+      var jsonId = this.parentElement.parentElement.parentElement.getAttribute("jsonId");
+      var objId = this.parentElement.parentElement.parentElement.id.split("_")[1];
+      toggleObject(this.checked, jsonId, objId);
     }
-    td.appendChild(checkBox)
-    tr.append(td)
+    div.append(checkBox);
 
-    //add icon
-    var td = document.createElement('td');
-    td.classList.add("td_objects_icon")
-    var icon = document.createElement('i')
-    icon.classList.add("fa");
+    //select the right icon and color for this object
+    function selectIcon(objType, icon) {
 
-    //select right icon
-    var objType = obj.coType.toLowerCase();
-    if (objType == "building" || objType == "buildingpart") {
-      icon.classList.add("fa-building");
-    } else if (objType == "waterbody") {
-      icon.classList.add("fa-tint")
-      console.log("HI");
-    } else if (objType == "plantcover") {
-      icon.classList.add("fa-leaf")
-    } else if (objType == "genericcityobject") {
-      icon.classList.add("fa-cube")
-    } else if (objType == "road") {
-      icon.classList.add("fa-road")
-    } else if (objType == "landuse") {
-      icon.classList.add("fa-mountain")
+        var fa1 = null;
+        var fa2 = null;
+        objType = objType.toLowerCase();
+
+        if (objType == "building" || objType == "buildingpart") {
+          fa1 = "fa"
+          fa2 = "fa-building";
+          if (objType == "building"){
+            icon.style.color = localStorage.getItem("colour_building").replace("0x", "#")
+          } else if (objType == "buildingpart"){
+            icon.style.color = localStorage.getItem("colour_buildingpart").replace("0x", "#")
+          }
+        } else if (objType == "waterbody") {
+          fa1 = "fa"
+          fa2 = "fa-tint";
+          icon.style.color = localStorage.getItem("colour_waterbody").replace("0x", "#")
+        } else if (objType == "plantcover") {
+          fa1 = "fa"
+          fa2 = "fa-leaf";
+          icon.style.color = localStorage.getItem("colour_plantcover").replace("0x", "#")
+        } else if (objType == "genericcityobject") {
+          fa1 = "fa"
+          fa2 = "fa-cube";
+        } else if (objType == "road") {
+          fa1 = "fa"
+          fa2 = "fa-road";
+          icon.style.color = localStorage.getItem("colour_road").replace("0x", "#")
+        } else if (objType == "landuse") {
+          fa1 = "fas"
+          fa2 = "fa-chart-area";
+          icon.style.color = localStorage.getItem("colour_landuse").replace("0x", "#")
+        } else {
+            fa1 = "far"
+            fa2 = "fa-question-circle";
+          }
+
+          return [fa1, fa2]
+      }
+
+    var iconDiv = document.createElement("div");
+    var icon = document.createElement('i');
+
+    //select the suitable icon
+    var iconClasses = selectIcon(obj.type, icon);
+    icon.classList.add(iconClasses[0]);
+    icon.classList.add(iconClasses[1]);
+    icon.setAttribute("objType", obj.type.toLowerCase());
+
+    iconDiv.append(icon);
+    div.append(iconDiv);
+
+    //create the json text
+    var textDiv = document.createElement("div");
+    textDiv.classList.add('box_text');
+
+    var jsonText = document.createElement("span");
+    jsonText.innerText = objects[key];
+    jsonText.style.color = "black"; //important for selecting/deselecting
+    jsonText.classList.add("small_box_text");
+    textDiv.append(jsonText);
+    div.append(textDiv);
+
+    //set the classes
+    tr.classList.add('trBox');
+    td.classList.add('tdBox');
+    checkBox.classList.add('box_check');
+
+    //append everything
+    td.append(div);
+    tr.append(td);
+
+    //if it is a children not append at the end but after the parent
+    if (parent != null){
+
+      //insert after parent and make it invisible
+      insertAfter(parent, tr)
+      tr.style.display = "none"
+
+      //add chevron
+      var chevDiv = parent.firstChild.firstChild.firstChild;;
+
+      //but only if not already added
+      if (chevDiv.childElementCount == 0){
+        var icon = document.createElement('i')
+        icon.classList.add("fas");
+        icon.classList.add("fa-chevron-right");
+        chevDiv.style.cursor="pointer"
+        chevDiv.prepend(icon)
+        chevDiv.onclick = function() {
+          toggleChildrenFiles(this)
+        };
+      }
     } else {
-      icon.classList.add("fa-question-circle");
+      table.append(tr);
     }
-    td.appendChild(icon)
-    tr.append(td)
+  }
+
+  //get the objects
+  var objects = jsonObjectsIdDict[jsonId];
+
+  //init array for objects with parentes
+  var objectsToDo = [];
+
+  //iterate and add
+  for (var key in objects) {
+    var obj = getObjectByName(jsonId, objects[key])
+
+    if (obj.parents != undefined){
+      objectsToDo.push([key, obj, jsonId]);
+    } else {
+      createObject(key, obj, jsonId, null);
+    }
+  }
+
+  //now do objects with parent
+  for (var i = 0; i < objectsToDo.length; i++){
+    var key = objectsToDo[i][0];
+    var obj = objectsToDo[i][1];
+    var jsonId = objectsToDo[i][2];
+
+    //get the objId and parent and position
+    var objParentId = getValKey(objects, obj.parents[0]);
+
+    //create row but now a little more to the right
+    createObject(key, obj, jsonId, objParentId)
+
+  }
+
+}
+
+//hide or show the children of an element
+function toggleChildrenFiles(row){
 
 
-    //add object text
-    var td = document.createElement('td');
-    td.classList.add("td_objects_text");
-    td.style.color = "black";
-    td.onclick = function() {
-      id = this.parentElement.id.split("_")[1]
-      selectCityObj(id)
+  var icon = row.firstChild;
+  var tr = row.parentElement.parentElement.parentElement;
+  var trLevel = tr.getAttribute("childLevel");
+
+  if (icon.classList.contains("fa-chevron-right")){
+    icon.classList.remove("fa-chevron-right");
+    icon.classList.add("fa-chevron-down");
+
+    while ($(tr).next().attr("childLevel") > trLevel){
+      if ($(tr).next().attr("childLevel") == parseInt(trLevel) + 1){
+        $(tr).next().css("display","block");
+      }
+      tr = $(tr).next();
+    }
+
+  } else {
+    icon.classList.remove("fa-chevron-down");
+    icon.classList.add("fa-chevron-right");
+
+    while ($(tr).next().attr("childLevel") > trLevel){
+      if ($(tr).next().attr("childLevel") == parseInt(trLevel) + 1){
+        $(tr).next().css("display","none");
+      }
+      tr = $(tr).next();
+    }
+  }
+}
+
+//add to files table
+function addToFiles(jsonId) {
+
+  //get the menu
+  var box = document.getElementById("files");
+  var table = box.children[1].children[0];
+
+  var jsonName = jsonIdDict[jsonId];
+
+  //create necessary elements
+  var tr = document.createElement('tr');
+  var td = document.createElement('td');
+  var div = document.createElement('div');
+
+  tr.id = "tr_" + jsonId;
+
+  tr.onclick = function(e){
+    //this click event should not be done if the checkbox is selected
+    if (e.target.classList.contains("box_check")){
+      return
     };
-    var objectText = document.createElement("span");
-    objectText.innerText = obj.objName;
-    td.append(objectText)
-    tr.append(td)
-
-    menu.append(tr)
+    var jsonId = this.id.split("_")[1];
+    handleFileSelect(jsonId);
   }
 
+  //checkbox for toggling File
+  var checkBox = document.createElement('input');
+  checkBox.type = "checkbox";
+  checkBox.checked = true;
+  checkBox.onchange = function() {
+    //get the id of the object to hide
+    var jsonId = this.parentElement.parentElement.parentElement.id.split("_")[1];
+    toggleFile(this.checked, jsonId);
+  }
+  div.append(checkBox);
 
+  //create the json text
+  var textDiv = document.createElement("div");
+  textDiv.classList.add('box_text');
+
+  var jsonText = document.createElement("span");
+  jsonText.innerText = jsonName;
+  jsonText.style.color = "black"; //important for selecting/deselecting
+  div.append(jsonText);
+
+  //set the classes
+  tr.classList.add('trBox');
+  td.classList.add('tdBox');
+  checkBox.classList.add('box_check');
+
+  //append everything
+  td.append(div);
+  tr.append(td);
+  table.append(tr);
+}
+
+//show or hide a box
+function toggleBox(type, bool){
+
+  if (bool){
+    document.getElementById(type).style.display="block";
+
+    //set width of element
+    var width = getBoxSize(type);
+    document.getElementById(type).style.width = width + "px";
+  } else {
+    document.getElementById(type).style.display="none";
+  }
+}
+
+//show or hide the search field
+function toggleSearch(type){
+
+  var input = document.getElementById(type + "SearchField")
+
+  if (input.style.display == "none"){
+    input.style.display = "block";
+    input.setAttribute("displayed", true);
+    input.focus();
+  } else {
+    input.style.display = "none";
+    input.setAttribute("displayed", false);
+  }
 
 }
 
-//delete the objects from objects menu
-function removeObjectsFromMenu(jsonid) {
+//maximize or minimize a box
+function toggleBigBox(type) {
 
-  //get the table rows
-  var tableRows = document.getElementById("objectsTable").children;
+  //get the elements
+  var box = document.getElementById(type);
+  var hideIcon = document.getElementById(type + "HideButton");
+  var searchIcon = document.getElementById(type + "SearchButton");
+  var searchField = document.getElementById(type + "SearchField");
+  var text = document.getElementById("txt_" + type);
+  var captionRotated = document.getElementById(type + "CaptionRotated");
+  var content = document.getElementById(type + "Content");
 
-  //iterate rows
-  for (var i = tableRows.length - 1; i >= 0; i--) {
-    var tr = tableRows[i]
-    //if row belongs to this json remove
-    if (tr.getAttribute('json_id') == jsonid) {
-      tr.remove()
+  var boxWidth = getBoxSize(type);
+
+  if (hideIcon.classList.contains("fa-eye-slash")) {
+
+    //change the hide icon
+    hideIcon.classList.remove("fa-eye-slash");
+    hideIcon.classList.add("fa-eye");
+
+    //change the box
+    box.classList.add("box_hidden");
+    box.style.width = "30px";
+
+    //change the caption
+    captionRotated.style.display = "block";
+
+    //hide elements
+    searchIcon.classList.add("hidden");
+    text.classList.add("hidden");
+    content.classList.add("hidden");
+    searchField.classList.add("hidden")
+
+  } else {
+
+    //change the hide icon
+    hideIcon.classList.add("fa-eye-slash");
+    hideIcon.classList.remove("fa-eye");
+
+    //change the box
+    box.classList.remove("box_hidden");
+    box.style.width = boxWidth + "px"
+
+    //change the caption
+    captionRotated.style.display = "none";
+
+    //show elements
+    searchIcon.classList.remove("hidden")
+    text.classList.remove("hidden");
+    content.classList.remove("hidden")
+
+    searchField.classList.remove("hidden");
+
+  }
+
+}
+
+//store boxSize to local storage
+function storeBoxSize(box){
+  var width = box.offsetWidth - 2; //remove border
+
+  //minimized size doesn't matter
+  if (width < 220){
+    return
+  }
+
+  localStorage.setItem("width_" + box.id, width)
+}
+
+//get boxsize from local storage
+function getBoxSize(id){
+  return localStorage.getItem("width_" + id)
+}
+
+//init the text for all dom elements
+function toggleText(lang) {
+
+  localStorage.setItem("settings_language", lang)
+
+  //set the text of an object
+  function setHTML(domId, text) {
+    try{
+      document.getElementById(domId).innerHTML = text;
+    } catch{
+      console.log("Element with id '" + domId + "' is missing");
     }
   }
 
-  //count number of children and if zero hide the menu
-  var childCount = document.getElementById("objectsTable").childElementCount;
-  if (childCount == 0) {
-    //make div visible
-    document.getElementById("objectsBox").style.display = 'none'
+  //set other to gray
+  var row = document.getElementById("tr_flags");
+  for (var j = 0, col; col = row.cells[j]; j++) {
+    if (col.id.split("_")[1] == lang){
+      col.children[0].style.paddingTop = "13px";
+      col.children[0].style.borderBottom = "2px solid black";
+    } else {
+      col.children[0].style.paddingTop = "0px";
+      col.children[0].style.borderBottom = "none";
+    }
   }
-}
 
-//jump to an entry in the file menu
-function jumpToFileEntry(id) {
-  var td = document.getElementById("object_" + id)
-  td.scrollIntoViewIfNeeded()
-}
 
-//make selected object blue or black
-function toggleText(id) {
-
-  var tr = document.getElementById("object_" + id);
-  var td = tr.children[2];
-
-  if (td.style.color == "black") {
-    td.style.color = "cornflowerblue";
-    td.style.fontWeight = "bold";
+  //check which dict must be taken which english as backup
+  var langDict = null
+  if (lang == "en") {
+    langDict = lang_en;
+  } else if (lang == "de") {
+    langDict = lang_de;
   } else {
-    td.style.color = "black";
-    td.style.fontWeight = "normal";
+    langDict = lang_en;
+  }
+
+  for (key in langDict){
+    var langType = key.split("_")[1];
+    if (langType != "context"){
+      setHTML(key, langDict[key])
+    }
+  }
+
+  //change some size
+  if (lang == "en"){
+    document.getElementById("information").style.height = "470px";
+    document.getElementById("infoBox").style.right = "130px";
+  } else if (lang == "de"){
+    document.getElementById("information").style.height = "590px";
+    document.getElementById("infoBox").style.right = "170px";
   }
 
 }
 
-//show or hide the loader
-function toggleLoader(bool) {
+//only display the objects that belong to this file
+function switchObjects(jsonId){
+  var table = document.getElementById("objectsTable");
 
-  loader = document.getElementById("loader")
+  for (var i = 0, row; row = table.rows[i]; i++) {
+    if (row.getAttribute("jsonId") == jsonId){
+      row.classList.remove("hidden");
+    } else {
+      row.classList.add("hidden");
+    }
+  }
+}
 
-  //show loader
-  if (bool) {
-    loader.style.display = 'block';
+//highlight a file in the box
+function selectFile(fileId){
+
+  var tr = document.getElementById("tr_" + fileId);
+
+  //get the textfield
+  var div = tr.children[0].children[0].children[1];
+  div.style.color = "cornflowerblue";
+  div.style.fontWeight = "bold";
+}
+
+//highlight an object in the box
+function selectObject(objId){
+  var tr = document.getElementById("tr_" + objId);
+  var div = tr.children[0].children[0].children[3].children[0];
+  div.style.color = "cornflowerblue";
+  div.style.fontWeight = "bold";
+}
+
+//deHighlight a file in the box
+function deselectFile(fileId){
+  var tr = document.getElementById("tr_" + fileId);
+  //get the textfield
+  var div = tr.children[0].children[0].children[1];
+  div.style.color = "black";
+  div.style.fontWeight = "normal";
+}
+
+//deHighlight an object in the box
+function deselectObject(objId){
+  var tr = document.getElementById("tr_" + objId);
+  var div = tr.children[0].children[0].children[3].children[0];
+  div.style.color = "black";
+  div.style.fontWeight = "normal";
+}
+
+//show the attributeBox
+function displayAttributeBox(objId, jsonId){
+  //clear table
+  var table = document.getElementById("attributesTable");
+  table.innerHTML = ""
+
+  //get object
+  var jsonObjects = jsonDict[jsonId].CityObjects;
+  var objectId = jsonObjectsIdDict[jsonId][objId];
+  var obj = jsonObjects[objectId];
+
+  //iterate all attributes
+  for (var key in obj.attributes){
+    var val = obj.attributes[key];
+
+    var tr = document.createElement("tr");;
+    tr.classList.add('trBox');
+
+    var td = document.createElement('td')
+    td.classList.add('tdBox_attr');
+    td.classList.add("small_box_text");
+
+    var divKey = document.createElement("div");
+    var txtKey = document.createElement("td");
+    txtKey.innerHTML = key;
+    divKey.classList.add("txt_attr");
+    divKey.append(txtKey)
+    td.append(divKey);
+
+    var divVal = document.createElement("div");
+    var txtVal = document.createElement("td");
+    txtVal.innerHTML = val;
+    divVal.classList.add("txt_attr");
+    divVal.append(txtVal)
+    td.append(divVal);
+
+    tr.append(td);
+    table.append(tr);
+  }
+
+}
+
+//jump to a particular file in the box
+function jumpToFile(fileId){
+  //select row
+  var tr = document.getElementById("tr_" + fileId);
+  //jump to element
+  tr.scrollIntoViewIfNeeded();
+}
+
+//jump to a particular object in the box
+function jumpToObject(objId){
+  var tr = document.getElementById("tr_" + objId);
+
+  //if element is a hidden child
+  if (tr.style.display == "none"){
+
+    var childLevel = tr.getAttribute("childLevel");
+
+    var origTr = tr;
+
+    //display children after this tr
+    while ($(tr).next().attr("childLevel") >= childLevel){
+      if ($(tr).next().attr("childLevel") == parseInt(childLevel)){
+        $(tr).next().css("display","block");
+      }
+      tr = $(tr).next();
+    }
+
+    tr = origTr;
+    //show previous children
+    while ($(tr).attr("childLevel") > 0){
+      $(tr).css("display","block");
+      tr = $(tr).prev();
+    }
+
+    //sometimes you need the first method to get the element, sometimes the second..
+    var elem = tr[0];
+    if (elem == undefined){
+      elem = tr;
+    }
+
+    //change the chevron
+    var icon = elem.children[0].children[0].children[0].children[0];
+    icon.classList.remove("fa-chevron-right");
+    icon.classList.add("fa-chevron-down");
+
+
+    origTr.scrollIntoViewIfNeeded();
+
   } else {
-    loader.style.display = 'none'
+
+    //jump to element
+    tr.scrollIntoViewIfNeeded();
   }
 }
 
-//show or hide statistics
-function toggleStatistics(stats) {
+//return the objIds of childrens of an object
+function getChildrenRows(objId){
 
-  console.log(stats);
+  var tr = document.getElementById("tr_" + objId);
+  childLevel = tr.getAttribute("childLevel");
 
-  var statistics = document.getElementById("statisticsMenu")
+  var ids = [];
 
-  if (statistics.style.display == 'none') {
-
-    document.getElementById("td_stat_fileSize").innerHTML = "";
-    document.getElementById("td_stat_numObjects").innerHTML = stats[9];
-    document.getElementById("td_stat_numVertices").innerHTML = stats[10];
-    document.getElementById("td_stat_numFaces").innerHTML = stats[11];
-    document.getElementById("td_stat_minX").innerHTML = stats[0];
-    document.getElementById("td_stat_maxX").innerHTML = stats[6];
-    document.getElementById("td_stat_minY").innerHTML = stats[1];
-    document.getElementById("td_stat_maxY").innerHTML = stats[7];
-    document.getElementById("td_stat_minZ").innerHTML = stats[2];
-    document.getElementById("td_stat_maxZ").innerHTML = stats[8];
-
-
-    statistics.style.display = 'block';
-  } else {
-    statistics.style.display = 'none'
+  while ($(tr).next().attr("childLevel") > childLevel){
+    tr = $(tr).next();
+    var id = $(tr).attr("id").split("_")[1];
+    ids.push(id);
   }
+
+  return ids
 }
 
-//show or hide settings menu
-function toggleSettings() {
+//show or hide the settings
+function toggleSettings(){
+  var settings = document.getElementById("settings");
+  var overlay = document.getElementById("overlay");
 
-  var settings = document.getElementById("settingsMenu")
-  var overlay = document.getElementById("overlayBox")
 
-  if (settings.style.display == 'none') {
-    settings.style.display = 'block';
+  if (settings.style.display == "none"){
+    settings.style.display = "block";
     overlay.style.zIndex = 1;
   } else {
-    settings.style.display = 'none'
+    settings.style.display = "none";
     overlay.style.zIndex = -1;
   }
 }
 
-//toggle between the settings tabs
-function toggleSettingsTab(tab) {
-
+//switch between the different settings tabs
+function toggleSettingsTab(tab){
   //change button
   var elements = document.getElementsByClassName('tablinks');
   for (var i = 0; i < elements.length; i++) {
@@ -305,242 +870,550 @@ function toggleSettingsTab(tab) {
 
 }
 
-//show or hide attributes
-function toggleAttributes(bool, id, jsonId){
+//call the right function for changing the colour
+function changeColour(elem){
 
-  var attributesBox = document.getElementById("attributesBox")
-  var objectsTable = document.getElementById("objectsTable")
+  //get information
+  var id = elem.id;
+  var col = elem.value;
 
-  //get id of object
-  var id = document.getElementById("object_" + id).lastChild.lastChild.innerHTML
+  //set color of td
+  document.getElementById(id).parentElement.style.backgroundColor = col;
 
-  //find the object
-  var obj = findObj(id, jsonId)
+  col = col.replace("#", "0x");
 
-  if (bool) {
+  //set color in localStorage
+  localStorage.setItem(id, col);
 
-    //get the attributes
-    var attributes = obj.attributes
+  //change background Colour
+  if (id == "colour_background"){
+    changeBackground(col.replace("#", "0x"));
+  } else if (id == "colour_normals"){
 
-    //get the table and clear from previous content
-    attrTable = document.getElementById("attributesTable")
-    attrTable.innerHTML = '';
+  } else if (id == "colour_edges"){
 
-    var tr = document.createElement('tr');
-
-    //create the value text
-    var th = document.createElement('th');
-    th.classList.add("td_attribute_value")
-    var valText = document.createElement("span");
-    valText.innerText = "Value";
-    th.append(valText)
-    tr.append(th)
-
-    //create the key text (must be lasted as whole div is mirrored)
-    var th = document.createElement('th');
-    th.classList.add("td_attribute_key")
-    var keyText = document.createElement("span");
-    keyText.innerText = "Attribute";
-    th.append(keyText)
-    tr.append(th)
-    attrTable.append(tr)
-
-    //build the table
-    Object.keys(attributes).forEach(function(key) {
-
-      var tr = document.createElement('tr');
-
-      //create the value text
-      var td = document.createElement('td');
-      td.classList.add("td_attribute_value")
-      var valText = document.createElement("span");
-      valText.innerText = attributes[key];
-      td.append(valText)
-      tr.append(td)
-
-      //create the key text (must be lasted as whole div is mirrored)
-      var td = document.createElement('td');
-      td.classList.add("td_attribute_key")
-      var keyText = document.createElement("span");
-      keyText.innerText = key;
-      td.append(keyText)
-      tr.append(td)
-
-      //add to menu
-      attrTable.append(tr)
-    });
-
-    attributesBox.style.display = 'block';
   } else {
-    attributesBox.style.display = 'none'
+    var coType = id.split("_")[1];
+    changeObjectColour(col, coType);
+    changeObjectIconColour(col, coType);
+  }
+
+
+}
+
+//change the colour of an icon in the object table
+function changeObjectIconColour(col, coType){
+
+  var table = document.getElementById("objectsTable");
+
+  col = col.replace("0x", "#");
+
+  for (var i = 0, row; row = table.rows[i]; i++) {
+
+    var icon = row.children[0].children[0].children[2].children[0];
+
+    if (icon.getAttribute("objType") == coType){
+      icon.style.color = col;
+    }
+
+  }
+
+}
+
+//show or hide the info window
+function toggleInfo(){
+
+  if (document.getElementById("information").style.display == "none"){
+    document.getElementById("information").style.display = "block";
+    document.getElementById("overlay").style.zIndex = 1;
+  } else {
+    document.getElementById("information").style.display = "none";
+    document.getElementById("overlay").style.zIndex = -1;
+  }
+
+}
+
+//show or hide the log
+function toggleLog(elem){
+  localStorage.setItem("settings_log", elem.checked);
+
+  if (elem.checked){
+    document.getElementById("logger").style.display="block";
+  } else {
+    document.getElementById("logger").style.display="none";
   }
 }
 
-//set color for an input color picker in settings
-function setColourVal(key, hex) {
+function toggleNavigation(elem){
+  localStorage.setItem("settings_navigation", elem.checked);
 
-  var hex = hex.replace("0x", "#");
-
-  var input = document.getElementById("colour_" + key.toLowerCase())
-  input.value = hex;
-
-  var td = input.parentElement
-  td.style.backgroundColor = hex;
+  if (elem.checked){
+    document.getElementById("navigation").style.display="block";
+  } else {
+    document.getElementById("navigation").style.display="none";
+  }
 }
 
-//if a new color is selected change the colour where needed
-function changeColour(elem) {
+//enable or disable Json verification
+function toggleVerifyJSON(elem){
+  localStorage.setItem("settings_verifyJSON", elem.checked);
+}
 
-  //get all attributes
-  var td = elem.parentElement
-  var colour = elem.value
-  var id = elem.id.split("_")[1]
+//enable or disable asking when deleting
+function toggleConfirmationDelete(elem){
+  localStorage.setItem("settings_askDelete", elem.checked);
+}
 
-  //change in local storage
+//show or hide the Licences
+function toggleLicenses(){
 
-  //change in td
-  td.style.backgroundColor = colour
+  if (document.getElementById("licences").style.display == "none"){
+    document.getElementById("licences").style.display="block";
 
-  //change in three js
-  changeObjectColour(id, colour)
+    var contentJS = document.getElementById("licences_js");
+
+    var ul = document.createElement("ul")
+
+    //create ul
+    for (var key in licencesJS){
+      var li = document.createElement("li");
+      var link = document.createElement("a")
+      link.href="#licence_" + key;
+      link.innerHTML = key;
+      li.append(link);
+      ul.append(li);
+
+    };
+    contentJS.append(ul)
+
+    for (var key in licencesJS){
+
+      var licence = licencesJS[key]
+
+      var divCaption = document.createElement("div");
+      divCaption.innerHTML = key;
+      divCaption.id = "licence_" + key;
+      divCaption.classList.add("licence_subsub");
+      contentJS.append(divCaption);
+
+      var link = document.createElement("a");
+      link.innerHTML = licence[0];
+      link.href = licence[0];
+      link.target = "_blank";
+      link.classList.add("licence_link");
+      contentJS.append(link);
+
+      var divText = document.createElement("div");
+      divText.innerHTML = licence[1];
+      divText.classList.add("licence_text");
+      contentJS.append(divText);
+    }
+
+  } else {
+    document.getElementById("licences").style.display="none";
+    document.getElementById("licences_js").innerHTML="";
+    document.getElementById("licences_css").innerHTML="";
+  }
+
+
+
+}
+
+//change the selection method´in the viewer
+function toggleSelect(elem){
+  localStorage.setItem("viewer_select", elem.value)
+}
+
+//show or hide the spinner
+function toggleSpinner(bool) {
+  var spinner = document.getElementById("spinner");
+
+  if (bool) {
+    spinner.style.display = 'block';
+  } else {
+    spinner.style.display = 'none';
+  }
+}
+
+//close all windows due to overlay
+function closeAll(){
+  document.getElementById("overlay").style.zIndex = -1;
+
+  document.getElementById("settings").style.display = "none";
+  document.getElementById("statistics").style.display = "none";
+  document.getElementById("metadata").style.display = "none";
+  document.getElementById("information").style.display = "none";
+  document.getElementById("overview").style.display = "none";
+
+  //clean temp content
+  clearStatistics();
+  clearOverview();
+
 }
 
 //reset file loeader that new files can be uploaded
 function resetFileLoader() {
-
   document.getElementById("fileElem").value = "";
+}
+
+//add or remove the click event from the overlay div for smoother feelings
+function toggleOverlayEvent(bool){
+
+  if(bool){
+
+    //to prevent that a click in the overlay box outside while input color is opened
+    //closes the settings field we wait 1 second until the overlay box get it's function back
+    setTimeout(function (){
+      document.getElementById("overlay").onclick = function(){
+        closeAll();
+      };
+    }, 1000);
+
+  } else {
+    document.getElementById("overlay").onclick = "";
+  }
 
 }
 
-//action when clicked on overlay
-function clickOverlay(){
-  toggleSettings()
+//show or hide the statistics box
+function toggleStatistics(jsonId){
+
+  if (document.getElementById("statistics").style.display == "none"){
+
+    var table = document.getElementById("statisticsTable");
+
+    //get the information for this file
+    var stats = jsonStats[jsonId]
+    var objectsCount = jsonObjectsCount[jsonId];
+
+    //calculate fileSize
+    var fileSize = stats[12];
+
+    //in kb
+    var prettyFileSize = Math.round(fileSize/1024);
+    var sizeType = "KB"
+
+    //in mn
+    if (prettyFileSize > 1024){
+      var prettyFileSize = Math.round(prettyFileSize/1024);
+      var sizeType = "MB"
+    }
+
+    if (prettyFileSize > 1024){
+      var prettyFileSize = Math.round(prettyFileSize/1024);
+      var sizeType = "GB"
+    }
+
+
+    //set the values
+    document.getElementById("td_stat_fileSize").innerHTML = prettyFileSize + " " + sizeType;
+    document.getElementById("td_stat_numObjects").innerHTML = stats[9];
+    document.getElementById("td_stat_numVertices").innerHTML = stats[10];
+    document.getElementById("td_stat_numFaces").innerHTML = stats[11];
+
+    //add the temp objects
+    for (key in objectsCount){
+      var tr = document.createElement("tr");
+      tr.classList.add("stat_temp");
+      var td = document.createElement("td");
+      var desc = document.createElement("span");
+      desc.innerHTML = "Number of " + key;
+      var val = document.createElement("span");
+      val.classList.add("span_val");
+      val.innerHTML = objectsCount[key];
+
+      td.append(desc);
+      td.append(val);
+      tr.append(td);
+      table.append(tr);
+    }
+    td.classList.add("lastStatTd")
+
+    //show statistics
+    document.getElementById("statistics").style.display = "block";
+
+    //show overlay
+    document.getElementById("overlay").style.zIndex = 1;
+
+  } else {
+    document.getElementById("statistics").style.display = "none";
+    document.getElementById("overlay").style.zIndex = -1;
+
+    clearStatistics();
+  }
+
+}
+
+//remove temp objects from statistics
+function clearStatistics(){
+  //remove temp objects
+  var elements = document.getElementsByClassName("stat_temp");
+  while(elements.length > 0){
+    elements[0].parentNode.removeChild(elements[0]);
+  }
+}
+
+function toggleMetadata(jsonId){
+  if (document.getElementById("metadata").style.display == "none"){
+
+    //get the information for this file
+    var stats = jsonStats[jsonId]
+
+    document.getElementById("td_meta_minX").innerHTML = stats[0];
+    document.getElementById("td_meta_maxX").innerHTML = stats[6];
+    document.getElementById("td_meta_minY").innerHTML = stats[1];
+    document.getElementById("td_meta_maxY").innerHTML = stats[7];
+    document.getElementById("td_meta_minZ").innerHTML = stats[2];
+    document.getElementById("td_meta_maxZ").innerHTML = stats[8];
+
+
+    document.getElementById("metadata").style.display = "block";
+    document.getElementById("overlay").style.zIndex = 1;
+  } else {
+    document.getElementById("metadata").style.display = "none";
+    document.getElementById("overlay").style.zIndex = -1;
+  }
+}
+
+//delete all elements in local storage and init again
+function resetLocalStorage(){
+  if (confirm('Are you sure you want to reset all settings (including colours) to default? This action cannot be undone.')) {
+
+
+    //clear the local storage
+    localStorage.clear();
+
+    //and fill the local storage again with the default values
+    initLocalStorage();
+
+    //and now new colours must be applied
+    for (var i = 0; i < localStorage.length; i++){
+
+      if (localStorage.key(i).split("_")[0] == "colour"){
+
+        var col = localStorage.getItem(localStorage.key(i));
+        col = col.replace("0x", "#");
+        var colObj = {id:localStorage.key(i),
+                      value: col
+                     };
+
+        changeColour(colObj);
+      }
+    }
+
+
+  }
+
+}
+
+//function to search a box
+function searchBox(type){
+  var table = document.getElementById(type + "Table");
+
+  var inputText = document.getElementById(type + "SearchField").value;
+
+  var searchIcon = document.getElementById(type + "SearchButton");
+
+  //change icon of filtering to indicate that a filter is active
+  if (inputText.length > 0){
+      searchIcon.classList.remove("fa-search");
+      searchIcon.classList.add("fa-search-plus");
+  } else {
+    searchIcon.classList.add("fa-search");
+    searchIcon.classList.remove("fa-search-plus");
+  }
+
+  //iterate all table elements
+  for (var i = 0, row; row = table.rows[i]; i++) {
+
+    //get the text of the row
+    if (type == "files"){
+      var rowText = row.children[0].children[0].children[1].innerHTML;
+    } else if (type == "objects"){
+      var rowText = row.children[0].children[0].children[3].children[0].innerHTML;
+    }
+
+    //check if text is in row
+    if (rowText.includes(inputText) == false){
+      row.classList.add("hidden")
+    } else {
+
+      //check if json file is selected
+      if (row.getAttribute("jsonId") == clickedFileId){
+        row.classList.remove("hidden")
+      }
+    }
+  }
+}
+
+//write logs to the logger
+function writeToLogger(text){
+
+  logger = document.getElementById("logger");
+
+  logger.innerHTML = logger.innerHTML + text + "<br>"
+
+}
+
+function contextEditFile(jsonId){
+
+}
+
+function contextSettings(jsonId){
+
+}
+
+function deleteFile(jsonId){
+
+  var jsonName = jsonIdDict[jsonId];
+
+  console.log("HI");
+
+  if (localStorage.getItem("settings_askDelete") == "true"){
+    if (confirm("Are you sure you want to delete '" + jsonName + "'? This action cannot be undone.") == false){
+      return
+    }
+  }
+
+  var toDel = []
+
+  //select to delete objects from filesMenu
+  var tableFiles = document.getElementById("filesTable");
+  for (var i = 0, row; row = tableFiles.rows[i]; i++) {
+    if (row.id.split("_")[1] == jsonId){
+      toDel.push(row);
+    }
+  }
+
+  //select to delete objects from objectsMenu
+  var tableObjects = document.getElementById("objectsTable");
+  for (var i = 0, row; row = tableObjects.rows[i]; i++) {
+    if (row.getAttribute("jsonId") == jsonId){
+      toDel.push(row);
+    }
+  }
+
+  //the actual delete
+  for (elem of toDel){
+    elem.remove();
+  }
+
+  //hide menus if nothing is in there
+  if (tableFiles.rows.length == 0){
+    document.getElementById("files").style.display = "none";
+  }
+  if (tableObjects.rows.length == 0){
+    document.getElementById("objects").style.display = "none";
+  }
+
+  //remove clicked
+  if (clickedFileId == jsonId){
+    clickedFileId = null;
+  }
+  console.log("todo the same with objects");
+
+  //delete from the viewer
+  deleteMeshes(jsonId);
+
+  //delete from the dicts
+  delete jsonDict[jsonId];
+  delete jsonIdDict[jsonId];
+  delete jsonObjectsIdDict[jsonId];
+  delete jsonStats[jsonId];
+  delete jsonObjectsCount[jsonId];
+}
+
+function duplicateFile(jsonId){
+
+  var jsonContent = jsonDict[jsonId];
+  var jsonName = jsonIdDict[jsonId];
+  handleSingleFile(jsonContent, jsonId);
+  writeToLogger("- '" + jsonName + "' will be duplicated.")
 }
 
 //context menu
 $(function() {
+
+  var lang = localStorage.getItem("settings_language");
+  var langDict = null;
+  if (lang == "en"){
+    langDict = lang_en;
+  } else if (lang == "de"){
+    langDict = lang_de;
+  }
+
   $('#filesTable').contextMenu({
     selector: 'tr',
     callback: function(key, options) {
-      id = $(this).attr('id');
-      id = id.substr(5)
+      id = $(this).attr('id').split("_")[1];
       if (key == "goto") {
-        setCamera(id)
+        setCamera(id);
       } else if (key == "edit") {
-        editFile(id)
+        contextEditFile(id);
       } else if (key == "duplicate") {
-        copyFile(id)
+        duplicateFile(id);
       } else if (key == "download") {
-        downloadFile(id)
-      } else if (key == "table"){
-        openTable(id)
-      } else if (key == "statistics") {
-        statisticsForFile(id)
-      } else if (key == "settings") {
-        settingsForFile(id)
+        contextDownloadFile(id);
       } else if (key == "delete") {
-        deleteFile(id)
+        deleteFile(id);
+      } else if (key == "overview"){
+        toggleOverview(id);
+      } else if (key == "metadata"){
+        toggleMetadata(id);
+      } else if (key == "statistics") {
+        toggleStatistics(id);
+      } else if (key == "settings") {
+        contextSettingsForFile(id);
       } else if (key == "quit") {
 
       }
     },
     items: {
       "goto": {
-        name: "Go to",
-        icon: "fa-crosshairs"
+        name: langDict["txt_context_goto"],
+        icon: "fas fa-crosshairs"
       },
+      "sep1": "---------",
       "edit": {
-        name: "Edit",
+        name: langDict["txt_context_edit"],
         icon: "edit"
       },
       "duplicate": {
-        name: "Duplicate",
+        name: langDict["txt_context_duplicate"],
         icon: "copy"
       },
       "download": {
-        name: "Download",
-        icon: "fa-download"
+        name: langDict["txt_context_download"],
+        icon: "fas fa-download"
       },
-      "table":{
-        name: "Table",
-        icon: "fa-table"
+      "delete": {
+        name: langDict["txt_context_delete"],
+        icon: "delete"
+      },
+      "sep2": "---------",
+      "overview":{
+        name: langDict["txt_context_overview"],
+        icon: "fas fa-table"
+      },
+      "metadata": {
+        name: langDict["txt_context_metadata"],
+        icon: "fas fa-globe"
       },
       "statistics": {
-        name: "Statistics",
-        icon: "fa-info-circle"
+        name: langDict["txt_context_statistics"],
+        icon: "fas fa-info-circle"
       },
       "settings": {
-        name: "Settings",
-        icon: "fa-cog"
+        name: langDict["txt_context_settings"],
+        icon: "fas fa-cog"
       },
-      "delete": {
-        name: "Delete",
-        icon: "delete"
-      },
-      "sep1": "---------",
+      "sep3": "---------",
       "quit": {
-        name: "Quit",
+        name: langDict["txt_context_quit"],
         icon: function($element, key, item) {
           return 'context-menu-icon context-menu-icon-quit';
         }
       }
     }
   });
-
-  $('#objectsTable').contextMenu({
-    selector: 'tr',
-    callback: function(key, options) {
-      id = $(this).attr('id');
-      id = id.substr(5)
-      if (key == "goto") {
-        setCamera(id)
-      } else if (key == "edit") {
-        editFile(id)
-      } else if (key == "copy") {
-        copyFile(id)
-      } else if (key == "download") {
-        downloadFile(id)
-      } else if (key == "statistics") {
-        statisticsForFile(id)
-      } else if (key == "delete") {
-        deleteFile(id)
-      } else if (key == "quit") {
-
-      }
-    },
-    items: {
-      "goto": {
-        name: "Go to",
-        icon: "fa-crosshairs"
-      },
-      "edit": {
-        name: "Edit",
-        icon: "edit"
-      },
-      "copy": {
-        name: "Copy",
-        icon: "copy"
-      },
-      "download": {
-        name: "Download",
-        icon: "fa-download"
-      },
-      "statistics": {
-        name: "Statistics",
-        icon: "fa-info-circle"
-      },
-      "delete": {
-        name: "Delete",
-        icon: "delete"
-      },
-      "sep1": "---------",
-      "quit": {
-        name: "Quit",
-        icon: function($element, key, item) {
-          return 'context-menu-icon context-menu-icon-quit';
-        }
-      }
-    }
-  });
-
 });

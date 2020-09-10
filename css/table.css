@@ -1,9 +1,0 @@
-#tableMenu{
-  position: absolute;
-  width: calc(100% - 10%);
-  left: 5%;
-  top: 5%;
-  height: calc(100% - 10%);
-  background: white;
-  border: 1px solid gray;
-}

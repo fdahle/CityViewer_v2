@@ -1,4 +1,3 @@
-
 #viewer{
   position: absolute;
   height: 100%;
@@ -12,20 +11,4 @@
 canvas{
   width: 100%;
   height: 100%;
-}
-
-/* position of axis helper */
-#viewer_axis{
-    width: 100px;
-    height: 100px;
-    margin: 20px;
-    padding: 0px;
-    position: absolute;
-    left: 0px;
-    bottom: 0px;
-    z-index: 100;
-}
-
-#viewerMenu{
-  
 }

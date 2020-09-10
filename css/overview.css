@@ -1,0 +1,61 @@
+#overview{
+  position: absolute;
+  width: 95%;
+  left: 2.5%;
+  top: 2.5%;
+  height: 95%;
+  background: white;
+  z-index: 3;
+  box-shadow: 10px 10px 23px 0px rgba(158,158,158,1);
+  border: 1px solid darkgray;
+}
+
+#overview_caption{
+  height: 30px;
+  padding-left: 10px;
+  padding-top: 10px;
+  font-size: large;
+  font-weight: bold;
+  border-bottom: 1px solid lightgray;
+}
+
+#overviewCloseButton{
+  cursor: pointer;
+  float: right;
+  margin: 2px;
+  margin-right: 12px;
+}
+
+#overview_content{
+  height: calc(100% - 41px);
+  width: 100%;
+  overflow: auto;
+}
+
+#overviewTable{
+  border-collapse: collapse;
+  border-spacing: 0;
+}
+
+#overview tr{
+  height: 18px;
+}
+
+#overview td{
+  border: 1px solid lightgray;
+  padding: 0px;
+}
+
+#overview input{
+  line-height: 18px;
+  border: none;
+  font-size: 11px;
+}
+
+.divResizable{
+  cursor: col-resize;
+}
+
+.td_overview_number{
+  text-align: right;
+}

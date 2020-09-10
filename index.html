@@ -5,29 +5,41 @@
   <meta charset=utf-8>
   <title>CityViewer</title>
 
+  <script src="js/ext/jquery-3.3.1.min.js"></script>
   <script src="js/ext/three.js"></script>
   <script src="js/ext/OrbitControls.js"></script>
   <script src="js/ext/FaceNormalsHelper.js"></script>
-  <script src="js/ext/jquery-3.3.1.min.js"></script>
   <script src="js/ext/earcut.js"></script>
+
+  <link rel="icon" type="image/x-icon" href="public/favicon.ico">
+  <link rel="manifest" href="public/manifest.json">
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-contextmenu/2.7.1/jquery.contextMenu.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-contextmenu/2.7.1/jquery.ui.position.js"></script>
-  <script src="https://use.fontawesome.com/XXX.js" SameSite="none Secure"></script>
+  <script src="https://bossanova.uk/jexcel/v4/jexcel.js"></script>
+  <script src="https://bossanova.uk/jsuites/v3/jsuites.js"></script>
 
   <script src="js/document.js"></script>
   <script src="js/viewer.js"></script>
   <script src="js/menu.js"></script>
-  <script src="js/functions.js"></script>
   <script src="js/values.js"></script>
+  <script src="js/functions.js"></script>
+  <script src="js/overview.js"></script>
 
-  <link href="https://fonts.googleapis.com/css?family=Roboto&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto&display=swap">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jquery-contextmenu/2.7.1/jquery.contextMenu.min.css">
+  <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.0.8/css/all.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/flag-icon-css/3.5.0/css/flag-icon.min.css">
+  <link rel="stylesheet" href="https://bossanova.uk/jexcel/v4/jexcel.css" type="text/css" />
+  <link rel="stylesheet" href="https://bossanova.uk/jsuites/v3/jsuites.css" type="text/css" />
+
   <link rel="stylesheet" href="css/main.css">
-  <link rel="stylesheet" href="css/viewer.css">
-  <link rel="stylesheet" href="css/menu.css">
-  <link rel="stylesheet" href="css/settings.css">
   <link rel="stylesheet" href="css/controls.css">
+  <link rel="stylesheet" href="css/viewer.css">
+  <link rel="stylesheet" href="css/box.css">
+  <link rel="stylesheet" href="css/settings.css">
+  <link rel="stylesheet" href="css/context.css">
+  <link rel="stylesheet" href="css/overview.css"
 
 </head>
 
@@ -36,271 +48,448 @@
   <div id="viewer"></div>
   <div id="viewer_axis"></div>
 
-  <div id="viewerMenu">
-  </div>
-
   <div id="dropper">
     <form id="dropbox" class="my-form">
-      <img class="logo" src="img/cityjson_logo.svg" width="100">
-      <p class="dbText">Drop your file here,<br> or click to open</p>
+      <img id="logo" src="img/cityjson_logo.svg" width="100">
+      <p id="txt_dropper"><span id=txt_dropper1></span><br><span id=txt_dropper2></span></p>
       <input type="file" id="fileElem" accept=".json" onchange="handleFiles(this.files)" multiple style="display: none">
     </form>
   </div>
 
-  <div id="filesBox" style="display: none">
-    <div id="filesCaption">
-      <span>Files</span>
-      <i id="filesHideButton" onclick="hideFiles()" class="fa fa-eye-slash"></i>
+  <div id="files" class="box" style="display: none">
+    <div id="filesCaption" class="box_caption">
+      <span id="txt_files"></span>
+      <input id="filesSearchField" class="box_input" onkeyup="searchBox('files')" type="text" style="display:none"></input>
+      <i id="filesHideButton" onclick="toggleBigBox('files')" class="box_i_hide fas fa-eye-slash"></i>
+      <i id="filesSearchButton" onclick="toggleSearch('files')" class="box_i_search fas fa-search"></i>
+      <div id="filesCaptionRotated" class="box_caption_rotated" style="display:none"><span id="txt_files_rota"></span></div>
     </div>
-    <div id="filesContent">
-      <table id="filesTable">
+    <div id="filesContent" class="box_content">
+      <table id="filesTable" class="box_table">
       </table>
     </div>
   </div>
 
-  <div id="objectsBox" style="display: none">
-    <div id="objectsCaption">Objects</div>
-    <div id="objectsContent">
-      <table id="objectsTable">
+  <div id="objects" class="box" style="display: none">
+    <div id="objectsCaption" class="box_caption">
+      <span id="txt_objects"></span>
+      <input id="objectsSearchField" class="box_input" onkeyup="searchBox('objects')" type="text" style="display:none"></input>
+      <i id="objectsHideButton" onclick="toggleBigBox('objects')" class="box_i_hide fas fa-eye-slash"></i>
+      <i id="objectsSearchButton" onclick="toggleSearch('objects')" class="box_i_search fas fa-search"></i>
+      <div id="objectsCaptionRotated" class="box_caption_rotated" style="display:none"><span id="txt_objects_rota"></span></div>
+    </div>
+    <div id="objectsContent" class="box_content">
+      <table id="objectsTable" class="box_table">
       </table>
     </div>
   </div>
 
-  <div id="attributesBox" style="display: none">
-    <div id="attributesCaption">Attributes</div>
-    <div id="attributesContent">
-      <table id="attributesTable">
+  <div id="attributes" class="box" style="display: none">
+    <div id="attributes_ltr">
+      <div id="attributesCaption" class="box_caption">
+        <span id="txt_attributes"></span>
+        <input id="attributesSearchField" class="box_input" onkeyup="searchBox('attributes')" type="text" style="display:none"></input>
+        <i id="attributesHideButton"onclick="toggleBigBox('attributes')" class="box_i_hide fas fa-eye-slash"></i>
+        <i id="attributesSearchButton" onclick="toggleSearch('attributes')" class="box_i_search fas fa-search"></i>
+        <div id="attributesCaptionRotated" class="box_caption_rotated" style="display:none"><span id="txt_attributes_rota"></span></div>
+      </div>
+      <div id="attributesContent" class="box_content">
+        <table id="attributesTable" class="box_table">
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div id="statistics" style="display: none">
+    <div id="statisticsCaption">
+      <span id="txt_statistics_caption"></span>
+      <i id="statisticsCloseButton" onclick="toggleStatistics()" class="fa fa-times"></i>
+    </div>
+    <div id="statisticsContent">
+      <table id="statisticsTable">
+        <tr>
+          <td>
+            <span id="txt_stat_fileSize"></span>
+            <span class="span_val" id="td_stat_fileSize"></span>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <span id="txt_stat_numObjects"></span>
+            <span class="span_val" id="td_stat_numObjects"></span>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <span id="txt_stat_numVertices"></span>
+            <span class="span_val" id="td_stat_numVertices"></span>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <span id="txt_stat_numFaces"></span>
+            <span class="span_val" id="td_stat_numFaces"></span>
+          </td>
+        </tr>
       </table>
     </div>
   </div>
 
-  <div id="settingsFileMenu" style="display: none"></div>
 
-  <div id="statisticsMenu" style="display: none">
-    <div id="statisticsCaption"></div>
-    <table>
-      <tr>
-        <td class="td_field">file size</td>
-        <td id="td_stat_fileSize" class="td_val"></td>
-      </tr>
-      <tr>
-        <td class="td_field">number of objects</td>
-        <td id="td_stat_numObjects" class="td_val"></td>
-      </tr>
-      <tr>
-        <td class="td_field">number of vertices</td>
-        <td id="td_stat_numVertices" class="td_val"></td>
-      </tr>
-      <tr>
-        <td class="td_field">number of faces</td>
-        <td id="td_stat_numFaces" class="td_val"></td>
-      </tr>
-
-
-      <tr>
-        <td class="td_field">min X</td>
-        <td id="td_stat_minX" class="td_val"></td>
-      </tr>
-      <tr>
-        <td class="td_field">max X</td>
-        <td id="td_stat_maxX" class="td_val"></td>
-      </tr>
-      <tr>
-        <td class="td_field">min Y</td>
-        <td id="td_stat_minY" class="td_val"></td>
-      </tr>
-      <tr>
-        <td class="td_field">max Y</td>
-        <td id="td_stat_maxY" class="td_val"></td>
-      </tr>
-      <tr>
-        <td class="td_field">min Z</td>
-        <td id="td_stat_minZ" class="td_val"></td>
-      </tr>
-      <tr>
-        <td class="td_field">max Z</td>
-        <td id="td_stat_maxZ" class="td_val"></td>
-      </tr>
-
-
-
-    </table>
-  </div>
-
-  <div id="tableMenu" style="display: none">
-  </div>
-
-  <div id="settingsBox">
-    <button class="btn" onclick="toggleSettings()"><i class="fa fa-cog"></i> Settings</button>
-  </div>
-
-  <div id="settingsMenu" style="display: none">
-    <div id="settingsCaption">
-      <span>Settings</span>
-      <i id="settingsCloseButton" onclick="toggleSettings()" class="fa fa-times"></i>
+  <div id="metadata" style="display: none">
+    <div id="metadataCaption">
+      <span id="txt_metadata_caption"></span>
+      <i id="metadataCloseButton" onclick="toggleMetadata()" class="fa fa-times"></i>
     </div>
-    <div class="tab">
-      <button id="button_settings_General" class="tablinks active" onclick="toggleSettingsTab('settings_General', event)">General</button>
-      <button id="button_settings_Viewer" class="tablinks" onclick="toggleSettingsTab('settings_Viewer', event)">Viewer</button>
-      <button id="button_settings_Colour" class="tablinks" onclick="toggleSettingsTab('settings_Colour', event)">Colours</button>
-    </div>
-
-    <div class="tabcontent" id="settings_General">
-      <div class="generalLine">
-        <label>display log:</label>
-        <label class="switch">
-          <input class="settingsCheck" type="checkbox" id="logBox" onclick="toggleLog()">
-          <span class="slider round"></span>
-        </label>
-      </div>
-      <div class="generalLine">
-        <label>verify json-files:</label>
-        <label class="switch">
-          <input class="settingsCheck" type="checkbox" id="logBox" onclick="toggleLog()">
-          <span class="slider round"></span>
-        </label>
-      </div>
-    </div>
-
-    <div class="tabcontent" id="settings_Viewer" style="display: none">
-      <div class="generalLine">
-        <label>show edges:</label>
-        <label class="switch">
-          <input type="checkbox" id="wireframeBox" onclick="toggleWireframe(this.checked)">
-          <span class="slider round"></span>
-        </label>
-      </div>
-      <div class="generalLine">
-        <label>show normals:</label>
-        <label class="switch">
-          <input type="checkbox" id="normalsBox" onclick="toggleNormals(this.checked)">
-          <span class="slider round"></span>
-        </label>
-      </div>
-      <div class="generalLine">
-        <label>show axis:</label>
-        <label class="switch">
-          <input type="checkbox" id="axisBox" onclick="toggleAxis()">
-          <span class="slider round"></span>
-        </label>
-      </div>
-    </div>
-
-    <div class="tabcontent" id="settings_Colour" style="display: none">
-      <div id="colour_background_caption" class="colour_caption">Viewer</div>
-      <table "colour_background_table">
+    <div id="metadataContent">
+      <table>
         <tr>
-          <td>Background</td>
-          <td class='td_colour'><input type='color' class='input_set_colour' oninput='changeColour(this)' id='colour_background'></td>
+          <td>
+            <span id="txt_meta_type"></span>
+            <span class="span_val" id="type"></span>
+          </td>
         </tr>
         <tr>
-          <td>Edges</td>
-          <td class='td_colour'><input type='color' class='input_set_colour' oninput='changeColour(this)' id='colour_edges'></td>
+          <td>
+            <span id="txt_meta_version"></span>
+            <span class="span_val" id="td_meta_version"></span>
+          </td>
         </tr>
         <tr>
-          <td>Normals</td>
-          <td class='td_colour'><input type='color' class='input_set_colour' oninput='changeColour(this)' id='colour_normals'></td>
-        </tr>
-      </table>
-      <div id="colour_cityjson_caption" class="colour_caption">Default CityJSON Objects</div>
-      <table "colour_cityjson_table">
-        <tr>
-          <td>Building</td>
-          <td class='td_colour'><input type='color' class='input_set_colour' oninput='changeColour(this)' id='colour_building'></td>
+          <td>
+            <span id="txt_meta_reference"></span>
+            <span class="span_val" id="td_meta_reference"></span>
+          </td>
         </tr>
         <tr>
-          <td>BuildingpartPart</td>
-          <td class='td_colour'><input type='color' class='input_set_colour' oninput='changeColour(this)' id='colour_buildingpart'></td>
+          <td>
+            <span id="txt_meta_minX"></span>
+            <span class="span_val" id="td_meta_minX"></span>
+          </td>
         </tr>
         <tr>
-          <td>BuildingInstallation</td>
-          <td class='td_colour'><input type='color' class='input_set_colour' oninput='changeColour(this)' id='colour_buildinginstallation'></td>
+          <td>
+            <span id="txt_meta_maxX"></span>
+            <span class="span_val" id="td_meta_maxX"></span>
+          </td>
         </tr>
         <tr>
-          <td>Bridge</td>
-          <td class='td_colour'><input type='color' class='input_set_colour' oninput='changeColour(this)' id='colour_bridge'></td>
+          <td>
+            <span id="txt_meta_minY"></span>
+            <span class="span_val" id="td_meta_minY"></span>
+          </td>
         </tr>
         <tr>
-          <td>BridgePart</td>
-          <td class='td_colour'><input type='color' class='input_set_colour' oninput='changeColour(this)' id='colour_bridgepart'></td>
+          <td>
+            <span id="txt_meta_maxY"></span>
+            <span class="span_val" id="td_meta_maxY"></span>
+          </td>
         </tr>
         <tr>
-          <td>BridgeInstallation</td>
-          <td class='td_colour'><input type='color' class='input_set_colour' oninput='changeColour(this)' id='colour_bridgeinstallation'></td>
+          <td>
+            <span id="txt_meta_minZ"></span>
+            <span class="span_val" id="td_meta_minZ"></span>
+          </td>
         </tr>
         <tr>
-          <td>BridgeConstructionElement</td>
-          <td class='td_colour'><input type='color' class='input_set_colour' oninput='changeColour(this)' id='colour_bridgeconstructionelement'></td>
-        </tr>
-        <tr>
-          <td>CityObjectGroup</td>
-          <td class='td_colour'><input type='color' class='input_set_colour' oninput='changeColour(this)' id='colour_cityobjectgroup'></td>
-        </tr>
-        <tr>
-          <td>CityFurniture</td>
-          <td class='td_colour'><input type='color' class='input_set_colour' oninput='changeColour(this)' id='colour_cityfurniture'></td>
-        </tr>
-        <tr>
-          <td>GenericCityObject</td>
-          <td class='td_colour'><input type='color' class='input_set_colour' oninput='changeColour(this)' id='colour_genericcityobject'></td>
-        </tr>
-        <tr>
-          <td>LandUse</td>
-          <td class='td_colour'><input type='color' class='input_set_colour' oninput='changeColour(this)' id='colour_landuse'></td>
-        </tr>
-        <tr>
-          <td>PlantCover</td>
-          <td class='td_colour'><input type='color' class='input_set_colour' oninput='changeColour(this)' id='colour_plantcover'></td>
-        </tr>
-        <tr>
-          <td>Railway</td>
-          <td class='td_colour'><input type='color' class='input_set_colour' oninput='changeColour(this)' id='colour_railway'></td>
-        </tr>
-        <tr>
-          <td>Road</td>
-          <td class='td_colour'><input type='color' class='input_set_colour' oninput='changeColour(this)' id='colour_road'></td>
-        </tr>
-        <tr>
-          <td>SolitaryVegetationObject</td>
-          <td class='td_colour'><input type='color' class='input_set_colour' oninput='changeColour(this)' id='colour_solitaryvegetationobject'></td>
-        </tr>
-        <tr>
-          <td>TINRelief</td>
-          <td class='td_colour'><input type='color' class='input_set_colour' oninput='changeColour(this)' id='colour_tinrelief'></td>
-        </tr>
-        <tr>
-          <td>TransportSquare</td>
-          <td class='td_colour'><input type='color' class='input_set_colour' oninput='changeColour(this)' id='colour_transportsquare'></td>
-        </tr>
-        <tr>
-          <td>Tunnel</td>
-          <td class='td_colour'><input type='color' class='input_set_colour' oninput='changeColour(this)' id='colour_tunnel'></td>
-        </tr>
-        <tr>
-          <td>TunnelPart</td>
-          <td class='td_colour'><input type='color' class='input_set_colour' oninput='changeColour(this)' id='colour_tunnelpart'></td>
-        </tr>
-        <tr>
-          <td>TunnelInstallation</td>
-          <td class='td_colour'><input type='color' class='input_set_colour' oninput='changeColour(this)' id='colour_tunnelinstallation'></td>
-        </tr>
-        <tr>
-          <td>WaterBody</td>
-          <td class='td_colour'><input type='color' class='input_set_colour' oninput='changeColour(this)' id='colour_waterbody'></td>
+          <td id="lastmetaTd">
+            <span id="txt_meta_maxZ"></span>
+            <span class="span_val" id="td_meta_maxZ"></span>
+          </td>
         </tr>
       </table>
     </div>
-
   </div>
 
+  <div id="overview" style="display: none">
+    <div id="overview_caption">
+      <span id="txt_overview_caption"></span>
+      <i id="overviewCloseButton" onclick="toggleOverview()" class="fa fa-times"></i>
+    </div>
+    <div id="overview_content">
+    </div>
+  </div>
 
-  <div id="infoBox">
+  <div id="linkBox">
     <p><a href="https://github.com/tudelft3d/CityJSON-viewer/" target="_blank">GitHub repository</a></p>
   </div>
 
-  <div id="overlayBox" onclick="clickOverlay()"></div>
+  <div id="infoBox">
+    <button id="btn_help" onclick="toggleInfo()"><i class="boxIcon far fa-question-circle"></i><span id="txt_btn_help"></span></button>
+  </div>
 
-  <div class="loader" id="loader" style="display: none"></div>
+  <div id="information" style="display:none">
+    <div id="informationCaption">
+      <span id="txt_info"></span>
+      <i id="informationCloseButton" onclick="toggleInfo()" class="fa fa-times"></i>
+    </div>
+    <div id="informationContent">
+      <p id="txt_info1"></p>
+      <p id="txt_info2"></p>
+      <p id="txt_info_toDo"></p>
+        <ul>
+          <li id="txt_info_todo1"></li>
+          <li id="txt_info_todo2"></li>
+          <li id="txt_info_todo3"></li>
+          <li id="txt_info_todo4"></li>
+          <li id="txt_info_todo5"></li>
+        </ul>
+      <p id="txt_info3"></p>
+    </div>
+  </div>
+
+  <div id="settingsBox">
+    <button id="btn_settings" onclick="toggleSettings()"><i class="boxIcon fa fa-cog"></i><span id="txt_btn_settings"</span></button>
+  </div>
+
+  <div id="settings" style="display: none">
+    <div id="settingsCaption">
+      <span id="txt_settings_caption"></span>
+      <i id="settingsCloseButton" onclick="toggleSettings()" class="fa fa-times"></i>
+    </div>
+    <div class="tab">
+      <button id="button_settings_General" class="tablinks active" onclick="toggleSettingsTab('settings_General', event)"><span id="txt_tab_general"></span></button>
+      <button id="button_settings_Viewer" class="tablinks" onclick="toggleSettingsTab('settings_Viewer', event)"><span id="txt_tab_viewer"></span></button>
+      <button id="button_settings_Colour" class="tablinks" onclick="toggleSettingsTab('settings_Colour', event)"><span id="txt_tab_colour"></span></button>
+    </div>
+
+    <div class="tabcontent" id="settings_General">
+      <div id="settings_general_generalOptions" class="settings_caption first_caption"><span id="txt_general_options"></span></div>
+      <table>
+        <tr>
+          <td id="display_log"><span id="txt_display_log"></span></td>
+          <td><label class="switch"><input type="checkbox" id="logBox" onchange="toggleLog(this)"><span class="slider round"></span>></td>
+        </tr>
+        <tr>
+          <td id="display_navi"><span id="txt_display_navi"></span></td>
+          <td><label class="switch"><input type="checkbox" id="naviBox" onchange="toggleNavigation(this)"><span class="slider round"></span>></td>
+        </tr>
+
+      </table>
+      <div id="json_options" class="settings_caption"><span id="txt_json_options"></span></div>
+      <table>
+        <tr>
+          <td id="verify_json"><span id="txt_verify_json"></span></td>
+          <td><label class="switch"><input type="checkbox" id="verifyBox" onclick="toggleVerifyJSON(this)"><span class="slider round"></span>></td>
+        </tr>
+        <tr>
+          <td id="beautify_json"><span id="txt_beautify_json"></span></td>
+          <td><label class="switch"><input type="checkbox" id="beautifyBox" onclick="toggleBeautifyJSON(this)"><span class="slider round"></span>></td>
+        </tr>
+        <tr>
+          <td id="ask_del"><span id="txt_ask_del"></span></td>
+          <td><label class="switch"><input type="checkbox" id="askDelBox" onchange="toggleConfirmationDelete(this)"><span class="slider round"></span>></td>
+        </tr>
+      </table>
+      <div class="settings_caption"><span id="txt_language_options"></span></div>
+      <table id="table_flags">
+        <tr id="tr_flags">
+          <td id="lang_en" class="td_flag" onclick="toggleText('en')"><span class="flag-icon flag-icon-gb"></span></td>
+          <td id="lang_de" class="td_flag" onclick="toggleText('de')"><span class="flag-icon flag-icon-de"></span></td>
+          <td id="lang_nl" class="td_flag" onclick="toggleText('nl')"><span class="flag-icon flag-icon-nl"></span></td>
+        </tr>
+      </table>
+      <div class="settings_caption"><span id="txt_setting_licences"></span></div>
+      <button onclick="toggleLicenses()"><i class="boxIcon fab fa-creative-commons"></i><span id="txt_show_licences"></span></button>
+      <div class="settings_caption"><span id="txt_settings_advanced"></span></div>
+      <button onclick="resetLocalStorage()"><i class="boxIcon fas fa-undo-alt"></i><span id="txt_reset_settings"></span></button>
+
+    </div>
+
+    <div class="tabcontent" id="settings_Viewer" style="display: none">
+      <div class="settings_caption first_caption"><span id="txt_helper_options"></span></div>
+      <table>
+        <tr>
+          <td><span id="txt_show_edges"></span></td>
+          <td><label class="switch"><input type="checkbox" id="wireframeBox" onclick="toggleWireframe(this.checked)"><span class="slider round"></span>></td>
+        </tr>
+        <tr>
+          <td><span id="txt_show_normals"></span></td>
+          <td><label class="switch"><input type="checkbox" id="normalsBox" onclick="toggleNormals(this.checked)"><span class="slider round"></span>></td>
+        </tr>
+        <tr>
+          <td><span id="txt_show_axis"></span></td>
+          <td><label class="switch"><input type="checkbox" id="axisBox" onclick="toggleAxis(this.checked)"><span class="slider round"></span>></td>
+        </tr>
+      </table>
+      <div class="settings_caption"><span id="txt_material_options"></span></div>
+      <table>
+        <tr>
+          <td><span id="txt_material_side"></span></td>
+          <td>
+            <select id="selectMatSide" onchange="toggleMaterialSide(this)">
+              <option id="txt_front_side" value="front">Front side</option>
+              <option id="txt_back_side" value="back">Back side</option>
+              <option id="txt_double_side" value="double">Double Side</option>
+              <option id="txt_intelligent_side" value="intelligent">Intelligent</option>
+            </select>
+          </td>
+        </tr>
+      </table>
+      <div class="settings_caption"><span id="txt_select_options"></span></div>
+      <table>
+        <tr>
+          <td><span id="txt_object_selection"></span></td>
+          <td>
+            <select id="selectClick" onchange="toggleSelect(this)">
+              <option id="txt_left_click" value="left"></option>
+              <option id="txt_double_left_click" value="double_left"></option>
+              <option id="txt_middle_click" value="middle"></option>
+              <option id="txt_right_click" value="right"></option>
+            </select>
+          </td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="tabcontent" id="settings_Colour" style="display: none">
+      <div class="settings_caption first_caption"><span id="txt_colour_caption_viewer"></span></div>
+      <table id="table_viewer_colour">
+        <tr>
+          <td><span id="txt_colour_background"></span></td>
+          <td class='td_colour' onclick='toggleOverlayEvent(false)'><input type='color' class='input_set_colour' oninput='changeColour(this)' onfocusout='toggleOverlayEvent(true)' id='colour_background'></td>
+        </tr>
+        <tr>
+          <td><span id="txt_colour_edges"></span></td>
+          <td class='td_colour' onclick='toggleOverlayEvent(false)'><input type='color' class='input_set_colour' oninput='changeColour(this)' onfocusout='toggleOverlayEvent(true)' id='colour_edges'></td>
+        </tr>
+        <tr>
+          <td><span id="txt_colour_normals"></span></td>
+          <td class='td_colour' onclick='toggleOverlayEvent(false)'><input type='color' class='input_set_colour' oninput='changeColour(this)' onfocusout='toggleOverlayEvent(true)' id='colour_normals'></td>
+        </tr>
+      </table>
+      <div class="settings_caption"><span id="txt_colour_caption_default"></span></div>
+      <table id="table_cityObjects_colour">
+        <tr>
+          <td><span id="txt_colour_building"></span></td>
+          <td class='td_colour' onclick='toggleOverlayEvent(false)'><input type='color' class='input_set_colour' oninput='changeColour(this)' onfocusout='toggleOverlayEvent(true)' id='colour_building'></td>
+        </tr>
+        <tr>
+          <td><span id="txt_colour_buildingpart"></span></td>
+          <td class='td_colour' onclick='toggleOverlayEvent(false)'><input type='color' class='input_set_colour' oninput='changeColour(this)' onfocusout='toggleOverlayEvent(true)' id='colour_buildingpart'></td>
+        </tr>
+        <tr>
+          <td><span id="txt_colour_buildinginstallation"></span></td>
+          <td class='td_colour' onclick='toggleOverlayEvent(false)'><input type='color' class='input_set_colour' oninput='changeColour(this)' onfocusout='toggleOverlayEvent(true)' id='colour_buildinginstallation'></td>
+        </tr>
+        <tr>
+          <td><span id="txt_colour_bridge"></span></td>
+          <td class='td_colour' onclick='toggleOverlayEvent(false)'><input type='color' class='input_set_colour' oninput='changeColour(this)' onfocusout='toggleOverlayEvent(true)' id='colour_bridge'></td>
+        </tr>
+        <tr>
+          <td><span id="txt_colour_bridgepart"></span></td>
+          <td class='td_colour' onclick='toggleOverlayEvent(false)'><input type='color' class='input_set_colour' oninput='changeColour(this)' onfocusout='toggleOverlayEvent(true)' id='colour_bridgepart'></td>
+        </tr>
+        <tr>
+          <td><span id="txt_colour_bridgeinstallation"></span></td>
+          <td class='td_colour' onclick='toggleOverlayEvent(false)'><input type='color' class='input_set_colour' oninput='changeColour(this)' onfocusout='toggleOverlayEvent(true)' id='colour_bridgeinstallation'></td>
+        </tr>
+        <tr>
+          <td><span id="txt_colour_bridgeconstructionelement"></span></td>
+          <td class='td_colour' onclick='toggleOverlayEvent(false)'><input type='color' class='input_set_colour' oninput='changeColour(this)' onfocusout='toggleOverlayEvent(true)' id='colour_bridgeconstructionelement'></td>
+        </tr>
+        <tr>
+          <td><span id="txt_colour_cityobjectgroup"></span></td>
+          <td class='td_colour' onclick='toggleOverlayEvent(false)'><input type='color' class='input_set_colour' oninput='changeColour(this)' onfocusout='toggleOverlayEvent(true)' id='colour_cityobjectgroup'></td>
+        </tr>
+        <tr>
+          <td><span id="txt_colour_cityfurniture"></span></td>
+          <td class='td_colour' onclick='toggleOverlayEvent(false)'><input type='color' class='input_set_colour' oninput='changeColour(this)' onfocusout='toggleOverlayEvent(true)' id='colour_cityfurniture'></td>
+        </tr>
+        <tr>
+          <td><span id="txt_colour_genericcityobject"></span></td>
+          <td class='td_colour' onclick='toggleOverlayEvent(false)'><input type='color' class='input_set_colour' oninput='changeColour(this)' onfocusout='toggleOverlayEvent(true)' id='colour_genericcityobject'></td>
+        </tr>
+        <tr>
+          <td><span id="txt_colour_landuse"></span></td>
+          <td class='td_colour' onclick='toggleOverlayEvent(false)'><input type='color' class='input_set_colour' oninput='changeColour(this)' onfocusout='toggleOverlayEvent(true)' id='colour_landuse'></td>
+        </tr>
+        <tr>
+          <td><span id="txt_colour_plantcover"></span></td>
+          <td class='td_colour' onclick='toggleOverlayEvent(false)'><input type='color' class='input_set_colour' oninput='changeColour(this)' onfocusout='toggleOverlayEvent(true)' id='colour_plantcover'></td>
+        </tr>
+        <tr>
+          <td><span id="txt_colour_railway"></span></td>
+          <td class='td_colour' onclick='toggleOverlayEvent(false)'><input type='color' class='input_set_colour' oninput='changeColour(this)' onfocusout='toggleOverlayEvent(true)' id='colour_railway'></td>
+        </tr>
+        <tr>
+          <td><span id="txt_colour_road"></span></td>
+          <td class='td_colour' onclick='toggleOverlayEvent(false)'><input type='color' class='input_set_colour' oninput='changeColour(this)' onfocusout='toggleOverlayEvent(true)' id='colour_road'></td>
+        </tr>
+        <tr>
+          <td><span id="txt_SolitaryVegetationObject"></span></td>
+          <td class='td_colour' onclick='toggleOverlayEvent(false)'><input type='color' class='input_set_colour' oninput='changeColour(this)' onfocusout='toggleOverlayEvent(true)' id='colour_solitaryvegetationobject'></td>
+        </tr>
+        <tr>
+          <td><span id="txt_TINRelief"></span></td>
+          <td class='td_colour' onclick='toggleOverlayEvent(false)'><input type='color' class='input_set_colour' oninput='changeColour(this)' onfocusout='toggleOverlayEvent(true)' id='colour_tinrelief'></td>
+        </tr>
+        <tr>
+          <td><span id="txt_TransportSquare"></span></td>
+          <td class='td_colour' onclick='toggleOverlayEvent(false)'><input type='color' class='input_set_colour' oninput='changeColour(this)' onfocusout='toggleOverlayEvent(true)' id='colour_transportsquare'></td>
+        </tr>
+        <tr>
+          <td><span id="txt_Tunnel"></span></td>
+          <td class='td_colour' onclick='toggleOverlayEvent(false)'><input type='color' class='input_set_colour' oninput='changeColour(this)' onfocusout='toggleOverlayEvent(true)' id='colour_tunnel'></td>
+        </tr>
+        <tr>
+          <td><span id="txt_TunnelPart"></span></td>
+          <td class='td_colour' onclick='toggleOverlayEvent(false)'><input type='color' class='input_set_colour' oninput='changeColour(this)' onfocusout='toggleOverlayEvent(true)' id='colour_tunnelpart'></td>
+        </tr>
+        <tr>
+          <td><span id="txt_TunnelInstallation"></span></td>
+          <td class='td_colour' onclick='toggleOverlayEvent(false)'><input type='color' class='input_set_colour' oninput='changeColour(this)' onfocusout='toggleOverlayEvent(true)' id='colour_tunnelinstallation'></td>
+        </tr>
+        <tr>
+          <td><span id="txt_WaterBody"></span></td>
+          <td class='td_colour' onclick='toggleOverlayEvent(false)'><input type='color' class='input_set_colour' oninput='changeColour(this)' onfocusout='toggleOverlayEvent(true)' id='colour_waterbody'></td>
+        </tr>
+      </table>
+    </div>
+
+  </div>
+
+  <div id="licences" style="display: none">
+    <div id="licences_caption">
+      <span>Licences</span>
+      <i id="licenceCloseButton" onclick="toggleLicenses()" class="fa fa-times"></i>
+    </div>
+    <div id="licences_content">
+      <div class="licence_subcaption">JavaScript</div>
+      <div id="licences_js">
+      </div>
+      <div class="licence_subcaption">CSS</div>
+      <div id="licences_css">
+      </div>
+    </div>
+  </div>
+
+  <div id="logger" style="display: none">
+  </div>
+
+  <div id="navigation" style="display: none">
+    <button class="naviButton">+ X</button>
+    <button class="naviButton">- X</button>
+    <button class="naviButton">+ Y</button>
+    <button class="naviButton">- Y</button>
+    <button class="naviButton">+ Z</button>
+    <button class="naviButton">- Z</button>
+    <button class="naviButton">+ 90</button>
+    <button class="naviButton naviButtonLast">- 90</button>
+  </div>
+
+  <div id="overlay" onclick="closeAll()">
+  </div>
+
+  <div id="spinner" style="display: none"></div>
+
+  <div id="warning_js">
+    <span>Please activate JavaScript</span>
+  </div>
+
+  <div id="warning_ls">
+    <span>Please activate JavaScript</span>
+  </div>
 
   <script>
     document.addEventListener("DOMContentLoaded", () => {
@@ -308,7 +497,7 @@
     })
   </script>
 
-</body>
 
+</body>
 
 </html>

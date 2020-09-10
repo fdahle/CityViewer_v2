@@ -1,5 +1,5 @@
 //
-// All functions related to Three js
+//all functions regarding the viewer can be found here
 //
 
 //init the viewer
@@ -30,7 +30,7 @@ function initViewer(viewer) {
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
   // add raycaster and mouse (for clickable objects)
-  raycaster = new THREE.Raycaster()
+  raycaster = new THREE.Raycaster();
   mouse = new THREE.Vector2();
 
   //add AmbientLight (light that is only there that there's a minimum of light and you can see color)
@@ -41,35 +41,22 @@ function initViewer(viewer) {
   // Add directional light
   spot_light = new THREE.SpotLight(0xDDDDDD);
   spot_light.castShadow = true;
-  spot_light.intensity = 0.4
+  spot_light.intensity = 0.4;
   scene.add(spot_light);
+
+  //background color
+  var backgroundColor = localStorage.getItem("colour_background");
+  scene.background = new THREE.Color(parseInt(backgroundColor));
 
   //render & orbit controls
   controls = new THREE.OrbitControls(camera, renderer.domElement);
-  controls.addEventListener('change', function() {
-    render();
-  });
   controls.screenSpacePanning = false;
-  //controls.maxPolarAngle = Math.PI / 2;
-
-  controls.update();
-
-
-  //update viewer when the window is resized
-  function updateWindowSize() {
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    render();
-  }
-  window.addEventListener("resize", updateWindowSize);
-
 
   //add renderer to object
   viewer.appendChild(renderer.domElement);
 
+  //otherwise the screen is black
   render();
-
 }
 
 //init the axis
@@ -92,27 +79,98 @@ function initAxis(viewer_axis) {
   axes2 = new THREE.AxesHelper(100);
   scene2.add(axes2);
 
-  render()
+  render();
 
 }
 
-//init the click events for viewer
-function initViewerEvents(viewer) {
+//events for the viewer
+function initViewerEvents() {
+
   viewer.onmousedown = function(eventData) {
-    if (eventData.button == 2) { //RightClick
-      getClicked(eventData)
+
+    var clickType = localStorage.getItem("viewer_select");
+
+    var eventType = null;
+    var clickNumber = null;
+
+    if (clickType == "left"){
+      eventType = "click";
+      clickNumber = 0;
+    } else if (clickType == "double_left"){
+      eventType = "doubleClick";
+      clickNumber = 0;
+    } else if (clickType == "middle"){
+      eventType = "click";
+      clickNumber = 1;
+    } else if (clickType == "right"){
+      eventType = "click";
+      clickNumber = 2;
+    } else {
+      eventType = "click";
+      clickNumber = 0; //backup
+    }
+
+    if (eventType=="click" && eventData.button == clickNumber) {
+      getClickedMesh(eventData);
     }
   };
+
+  viewer.ondblclick = function(eventData) {
+
+    var clickType = localStorage.getItem("viewer_select");
+
+    var eventType = null;
+    var clickNumber = null;
+
+    if (clickType == "left"){
+      eventType = "click";
+      clickNumber = 0;
+    } else if (clickType == "double_left"){
+      eventType = "doubleClick";
+      clickNumber = 0;
+    } else if (clickType == "middle"){
+      eventType = "click";
+      clickNumber = 1;
+    } else if (clickType == "right"){
+      eventType = "click";
+      clickNumber = 2;
+    } else {
+      eventType = "click";
+      clickNumber = 0; //backup
+    }
+
+    if (eventData.button == clickNumber) {
+      getClickedMesh(eventData);
+    }
+  }
+
+  //update viewer when the window is resized
+  function updateWindowSize() {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    render();
+  }
+  window.addEventListener("resize", updateWindowSize);
+
+  //if controls are moving the screen should be updated
+  controls.addEventListener('change', function() {
+    render();
+  });
+
+  //update controls that the new settings are applied
+  controls.update();
+
 }
 
-//render a json file
-async function renderJSON(jsonId, json) {
+//render a json file that it can be displayed
+async function renderJSON(jsonId, json, fileSize) {
 
   //create ThreeJS points from dict
   function parsePoints(json) {
 
     //create array that will contain the points
-    pointsDict = {}
+    var pointsDict = {};
 
     //iterate all vertices
     for (var i in json.vertices) {
@@ -132,10 +190,11 @@ async function renderJSON(jsonId, json) {
   async function createGeom(cityObj, pointsDict, numFaces) {
 
     //create geometry
-    var geom = new THREE.Geometry()
+    var geom = new THREE.Geometry();
 
     //dependent on the geometry type the boundaries must be extracted different
-    var geomType = cityObj.geometry[0].type
+    var geomType = cityObj.geometry[0].type;
+
     if (geomType == "Solid") {
       boundaries = cityObj.geometry[0].boundaries[0];
 
@@ -148,64 +207,64 @@ async function renderJSON(jsonId, json) {
 
 
     //make boundaries flat and remove duplicates, than we have a list of vertices used for this geom
-    flatBounds = boundaries.flat(2)
-    uniqueBounds = [...new Set(flatBounds)]
+    var flatBounds = boundaries.flat(2);
+    var uniqueBounds = [...new Set(flatBounds)];
 
     //the number in the json file must be converted to an internal number
-    var translation = {}
+    var translation = {};
 
     //add the vertices of these points
     for (var i = 0; i < uniqueBounds.length; i++) {
 
       //save the translation
-      translation[uniqueBounds[i]] = i
+      translation[uniqueBounds[i]] = i;
 
       //add point to the geom vertices
-      geom.vertices.push(pointsDict[uniqueBounds[i]])
+      geom.vertices.push(pointsDict[uniqueBounds[i]]);
     }
 
     //iterate every face of geometry
     for (var i = 0; i < boundaries.length; i++) {
 
       //get the point that make the face
-      boundary = boundaries[i][0];
+      var boundary = boundaries[i][0];
 
       //one face more
-      numFaces = numFaces + 1
+      var numFaces = numFaces + 1;
 
       //keeps the triangulated boundaries
-      var triangles = []
+      var triangles = [];
 
       //if triangulated it's easy and a face can directly be created
       if (boundary.length == 3) {
-        triangles = [boundary]
+        triangles = [boundary];
 
-      //not good, face must be triangulated before created
+        //not good, face must be triangulated before created
       } else {
 
         //get all the points that belong to this boundary and save them in a temp array
-        var point3DArr = []
+        var point3DArr = [];
         for (var j = 0; j < boundary.length; j++) {
-          var point = pointsDict[boundary[j]]
-          point3DArr.push(point)
+          var point = pointsDict[boundary[j]];
+          point3DArr.push(point);
         }
 
         //triangulate
-        triangles = await triangulate(point3DArr, boundary)
+        triangles = await triangulate(point3DArr, boundary);
 
       }
 
       //create the faces and push to the geometry
-      for (var j = 0; j < triangles.length; j++){
-        tri = triangles[j]
+      for (var j = 0; j < triangles.length; j++) {
+        var tri = triangles[j];
 
         //here the actual face is created
         var face = new THREE.Face3(
           translation[tri[0]],
           translation[tri[1]],
           translation[tri[2]]
-        )
-        geom.faces.push(face)
+        );
+        geom.faces.push(face);
       }
 
     }
@@ -214,47 +273,135 @@ async function renderJSON(jsonId, json) {
 
   //create a mesh for a geometry
   function createMesh(cityObj, geom) {
+
+    //get the right  objType
     var coType = cityObj.type;
 
+    //set material
     var material = new THREE.MeshLambertMaterial();
-    material.side = THREE.DoubleSide;
+    var matSide = localStorage.getItem("viewer_materialSide");
+      if (matSide == "front"){
+        material.side = THREE.FrontSide;
+      } else if (matSide == "back"){
+        material.side = THREE.BackSide;
+      } else if (matSide == "double"){
+        material.side = THREE.DoubleSide;
+      } else if (matSide == "intelligent"){
+        //// TODO: implement intelligent
+        material.side = THREE.DoubleSide;
+      } else {
+        material.side = THREE.DoubleSide; //backup for failing
+      }
 
+    
     //check if color is predefined
-    if (localStorage.getItem("color_" + coType) === null) {
-      hex = '0x' + Math.floor(Math.random() * 16777215).toString(16);
-      localStorage.setItem("color_" + coType, hex);
+    if (localStorage.getItem("colour_" + coType.toLowerCase()) === null) {
+
+      //if not set a random color
+      var hex = '0x' + Math.floor(Math.random() * 16777215).toString(16);
+      localStorage.setItem("colour_" + coType.toLowerCase(), hex);
+
+      //use predeinfed color
     } else {
-      hex = localStorage.getItem("color_" + coType)
+      var hex = localStorage.getItem("colour_" + coType.toLowerCase());
     }
+
+
     material.color.setHex(hex);
 
     //create mesh
-    var mesh = new THREE.Mesh(geom, material)
+    var mesh = new THREE.Mesh(geom, material);
     mesh.castShadow = true;
     mesh.receiveShadow = true;
 
     return mesh
   }
 
+  async function triangulate(points, boundary) {
+
+    //calculate centroid
+    var centroid = new THREE.Vector3();
+    centroid.setScalar(0.0);
+    for (var k = 0, l = points.length; k < l; k++) {
+      centroid.add(points[k]);
+    }
+    centroid.multiplyScalar(1.0 / l);
+
+    //compute face normal
+    var plane = new THREE.Plane();
+    plane.setFromCoplanarPoints(centroid, points[0], points[1]);
+    var faceNormal = plane.normal;
+
+    //compute basis
+    var quat = new THREE.Quaternion();
+    var x = new THREE.Vector3();
+    var y = new THREE.Vector3();
+    quat.setFromUnitVectors(Z, faceNormal);
+    x.copy(X).applyQuaternion(quat);
+    y.crossVectors(x, faceNormal);
+    y.normalize();
+    var basis = new THREE.Matrix4();
+    basis.makeBasis(x, y, faceNormal);
+    basis.setPosition(centroid);
+
+    // project the 3D points on the 2D plane
+    var projPoints = [];
+    var _tmp = new THREE.Vector3();
+    for (var k = 0, l = points.length; k < l; k++) {
+      _tmp.subVectors(points[k], centroid);
+      projPoints.push(_tmp.dot(x))
+      projPoints.push(_tmp.dot(y))
+    }
+
+    //triangulate with earcut
+    var tr = await earcut(projPoints, null, 2);
+    var deviation = await earcut.deviation(projPoints, 0, 2, tr);
+    if (deviation > 1) {
+      console.log(tr);
+    }
+
+    //chunk in triangles and translate the indices
+    var chunked = [];
+    for (var k = 0; k < tr.length; k += 3) {
+
+      var p1 = boundary[tr[k]];
+      var p2 = boundary[tr[k + 1]];
+      var p3 = boundary[tr[k + 2]];
+
+      chunked.push([p1, p2, p3]);
+    }
+
+    return chunked
+  }
+
   //get starting point of loading
-  var startTime = Date.now()
+  var startTime = Date.now();
 
   //get all points of json
-  pointsDict = await parsePoints(json)
-
-  //save tempory all meshes
-  var meshes = []
+  pointsDict = await parsePoints(json);
 
   //count number of faces
-  var numFaces = 0
+  var numFaces = 0;
+
+  //own obj dict per jsonFile
+  var objDict = {};
+
+  //count obj types
+  var objTypeCount = {};
 
   //iterate through all cityObjects
-  for (var id in json.CityObjects) {
+  for (var key in json.CityObjects) {
 
     //get the cityObject
-    cityObj = json.CityObjects[id]
+    cityObj = json.CityObjects[key];
 
-    //skip obj if there's an error
+    //create an uniqueId for this object
+    var objId = create_UUID();
+
+    //add object to dict
+    objDict[objId] = key
+
+    //skip obj if it doesnt have a geometry
     if (cityObj.geometry.length == 0) {
       continue
     }
@@ -263,121 +410,51 @@ async function renderJSON(jsonId, json) {
     output = await createGeom(cityObj, pointsDict, numFaces)
     var geom = output[0]
     numFaces = output[1]
+
+    //compute the face normals
     geom.computeFaceNormals();
 
-    //create mesh
-    mesh = await createMesh(cityObj, geom)
-    mesh.name = mesh.uuid;
-    mesh.objName = id;
-    mesh.jsonId = jsonId;
-    mesh.coType = cityObj.type
+    //create mesh and set its ids
+    var mesh = await createMesh(cityObj, geom);
+    mesh.name = objId + "_" + jsonId;
+    mesh.coType = cityObj.type;
 
-    //add the parent mesh as info
-    if (cityObj.parents != undefined){
-      mesh.jsonParent=cityObj.parents[0];
+    //count object types
+    if (objTypeCount.hasOwnProperty(cityObj.type)){
+      objTypeCount[cityObj.type] = objTypeCount[cityObj.type] + 1;
+    } else {
+      objTypeCount[cityObj.type] = 1;
     }
 
     //visibility settings
     mesh.jsonVisible = true;
     mesh.meshVisible = true;
 
-    /*
-    // add edge
-    var edge_geom = new THREE.EdgesGeometry(mesh.geometry);
-    var edge_mat = new THREE.LineBasicMaterial({color:0xD3D3D3,linewidth:2});
-    var edge = new THREE.LineSegments(edge_geom,edge_mat);
-    mesh.add(edge);
-    */
-
     //add mesh to scene
     scene.add(mesh)
-    meshes.push(mesh)
+
+    //if wireframe active create
+    if (localStorage.getItem("viewer_edges") == "true"){
+      createWireFrame(mesh);
+    }
+
+    if (localStorage.getItem("viewer_normals") == "true"){
+      createNormals(mesh)
+    }
 
   }
+
+  //add objDict to the all objects dict
+  jsonObjectsIdDict[jsonId] = objDict;
+  jsonObjectsCount[jsonId] = objTypeCount;
 
   //get end point of loading
-  var endTime = Date.now()
+  var endTime = Date.now();
 
   //get required time for loading
-  var loadingTime = endTime - startTime
+  var loadingTime = endTime - startTime;
 
-  console.log("loading time in ms:", loadingTime);
-
-  //get the statistics for this file
-  var stats = getStats(json);
-  var minX = stats[0];
-  var minY = stats[1];
-  var minZ = stats[2];
-  var avgX = stats[3];
-  var avgY = stats[4];
-  var avgZ = stats[5];
-  var maxX = stats[6];
-  var maxY = stats[7];
-  var maxZ = stats[8];
-
-  stats[11] = numFaces
-
-  jsonStats[jsonId] = stats
-
-  //calculate the width (required for camera)
-  width = ((maxX - minX) + (maxY - minY)) / 2
-  if (width < 5) {
-    width = 5;
-  }
-
-  spot_light.position.set(minX, minY, maxZ + 1000);
-  spot_light.target.position.set(avgX, avgY, 0);
-  scene.add(spot_light.target);
-
-  //set camera position
-  camera.position.set(avgX, avgY, width * 1.2);
-  camera.lookAt(avgX, avgY, avgZ)
-  //camera.rotation.set(1.0250179306032716, 0.011690303649862465, -0.01924645011326)
-
-  //set controls position
-  controls.target.set(avgX, avgY, 0);
-  controls.update()
-
-  //render the scene so thats's visible
-  render();
-
-  //add the objects to the menu
-  await addToObjectMenu(id, meshes)
-
-  //show loader
-  toggleLoader(false)
-
-
-  //delete the temp array
-  meshes = [];
-}
-
-//remove all objects of a json
-function removeJSON(jsonId) {
-
-  //keep which objects should be deleted
-  var toDel = []
-
-  //iterate the scene
-  scene.traverse(function(child) {
-    if (child.jsonId === jsonId) {
-      toDel.push(child)
-    }
-  });
-
-  //delete
-  for (var i = 0; i < toDel.length; i++) {
-    scene.remove(toDel[i])
-  }
-
-  //reset list
-  toDel = []
-
-}
-
-//set default position of camera
-function setCamera(jsonId) {
-
+  //get and save the statistics for this file
   var stats = jsonStats[jsonId];
   var minX = stats[0];
   var minY = stats[1];
@@ -389,29 +466,75 @@ function setCamera(jsonId) {
   var maxY = stats[7];
   var maxZ = stats[8];
 
+  //set numFaces
+  stats[11] = numFaces;
+
+  //save jsonStats
+  jsonStats[jsonId] = stats;
+
   //calculate the width (required for camera)
-  width = ((maxX - minX) + (maxY - minY)) / 2
+  var width = ((maxX - minX) + (maxY - minY)) / 2;
   if (width < 5) {
     width = 5;
   }
 
+  //set light
+  spot_light.position.set(minX, minY, maxZ + 1000);
+  spot_light.target.position.set(avgX, avgY, 0);
+  scene.add(spot_light.target);
+
   //set camera position
   camera.position.set(avgX, avgY, width * 1.2);
-  camera.lookAt(avgX, avgY, avgZ)
+  camera.lookAt(avgX, avgY, avgZ);
   //camera.rotation.set(1.0250179306032716, 0.011690303649862465, -0.01924645011326)
 
   //set controls position
   controls.target.set(avgX, avgY, 0);
-  controls.update()
+  controls.update();
 
+  //render the scene so thats's visible
   render();
 
+  return loadingTime
+}
 
+//create a wireframe for an object
+function createWireFrame(obj){
+
+  edgesColor = localStorage.getItem("colour_edges");
+  if (edgesColor == null){ //backup
+    edgesColor = 0x000000;
+  }
+
+  var geo = new THREE.EdgesGeometry(obj.geometry);
+  var mat = new THREE.LineBasicMaterial({
+    color: parseInt(edgesColor),
+    linewidth: .1,
+    transparent: true,
+    opacity: 0.2
+  });
+  var wireframe = new THREE.LineSegments(geo, mat);
+  wireframe.name = "wireframe_" + obj.name;
+  wireframe.jsonId = obj.name.split("_")[1];
+  wireframe.vtype = "wireframe";
+  scene.add(wireframe);
+}
+
+//create normals for an object
+function createNormals(obj){
+  normalsColour = localStorage.getItem("colour_normals");
+  if (normalsColour == null){ //backup
+    normalsColour = 0x00ff00;
+  }
+
+  var normal = new FaceNormalsHelper(obj, 2, parseInt(normalsColour), 1);
+  normal.jsonId = obj.name.split("_")[1];
+  normal.vtype = "normal";
+  scene.add(normal);
 }
 
 //action if element in viewer is selected
-function getClicked(e) {
-
+function getClickedMesh(e){
   //get mouseposition
   mouse.x = (event.clientX / renderer.domElement.clientWidth) * 2 - 1;
   mouse.y = -(event.clientY / renderer.domElement.clientHeight) * 2 + 1;
@@ -427,257 +550,338 @@ function getClicked(e) {
     return
   }
 
-  //save clicked Obj as variable
+  //save clickedObj
   var clicked = null;
   for (var i = 0; i < intersects.length; i++) {
     if (intersects[i].object.type == "Mesh") {
-      clicked = intersects[i].object;
+      var clicked = intersects[i].object;
       break;
     }
   }
 
-  //select this obj
-  selectCityObj(clicked.uuid)
+  //get identifiers
+  var objId = clicked.name.split("_")[0];
+  var jsonId = clicked.name.split("_")[1];
+
+  handleObjectSelect(jsonId, objId);
 
 }
 
-//mark an clicked object in the viewer
-function selectCityObj(id) {
+function deHighlightMesh(obj){
 
-  //empty the previous clicked object
-  if (clickedObj != null) {
-    toggleText(clickedObj.uuid)
-    clickedObj.material.emissive.setHex(clickedObj.oldHex);
-    delete clickedObj.oldHex
-    var oldWireFrame = scene.getObjectByName("wireframe_" + clickedObj.uuid);
-    scene.remove(oldWireFrame);
+  obj.material.emissive.setHex(obj.oldHex);
+  delete obj.oldHex;
+  var oldWireFrame = scene.getObjectByName("wireframeHighlight_" + obj.uuid);
+  scene.remove(oldWireFrame);
+
+  render();
+
+}
+
+//highlight an object
+function highlightMesh(objId, jsonId){
+
+  //get new object
+  var meshId = objId + "_" + jsonId;
+  var clickedObj = scene.getObjectByName(meshId);
+
+  function highlight(obj){
+    //highlight the obj with glowing
+    obj.oldHex = clickedObj.material.emissive.getHex();
+    obj.material.emissive.setHex(0xff0000);
+
+    //add wireframe to still see strucutre
+    var geo = new THREE.EdgesGeometry(obj.geometry);
+    var mat = new THREE.LineBasicMaterial({
+      color: 0x000000,
+      linewidth: .1,
+      transparent: true,
+      opacity: 0.2
+    });
+    var wireframe = new THREE.LineSegments(geo, mat);
+    wireframe.name = "wireframeHighlight_" + obj.uuid;
+    wireframe.jsonId = obj.name.split("_")[1];
+    scene.add(wireframe);
   }
+
+  //a parent was clicked
+  if (clickedObj == undefined){
+
+    var ids = getChildrenRows(objId)
+
+    for (var id of ids){
+      meshId = id + "_" + jsonId;
+      clickedObj = scene.getObjectByName(meshId);
+      highlight(clickedObj);
+      highlightedObjects.push(clickedObj);
+    }
+
+  } else {
+    highlight(clickedObj);
+    highlightedObjects.push(clickedObj)
+  }
+
+  render();
+}
+
+function deleteMeshes(jsonId){
+
+  var toDel = [];
+
+  //iterate the scene
+  scene.traverse(function(child) {
+
+    var childJsonid = child.name.split("_")[1];
+
+    //only the objects of this json file
+    if (childJsonid === jsonId || child.jsonId == jsonId) {
+      toDel.push(child)
+    }
+  });
+
+  for (obj of toDel){
+    scene.remove(obj);
+  }
+
+  toDel = [];
+
+  //update the scene
+  render();
+}
+
+//hide or show all json objects
+function toggleFile(bool, jsonId) {
+
+  //iterate the scene
+  scene.traverse(function(child) {
+
+    var childJsonid = child.name.split("_")[1];
+
+    //only the objects of this json file
+    if (childJsonid === jsonId) {
+
+      //set visibility
+      child.jsonVisible = bool;
+
+      //if one condition is not true hide object
+      if (child.jsonVisible == false || child.meshVisible == false) {
+        child.visible = false;
+      }
+
+      //if all conditions are true show object
+      if (child.jsonVisible == true && child.meshVisible == true) {
+        child.visible = true;
+      }
+    }
+
+  });
+
+  //update the scene
+  render();
+
+}
+
+//hide or show a single json object
+function toggleObject(bool, jsonId, objId) {
 
   //get this object
-  clickedObj = scene.getObjectByName(id);
+  var meshId = objId + "_" + jsonId;
+  var obj = scene.getObjectByName(meshId);
 
-  //jump to object in table
-  jumpToFileEntry(id)
+  //set visibility
+  obj.meshVisible = bool;
 
-  //highlight the obj with glowing
-  clickedObj.oldHex = clickedObj.material.emissive.getHex();
-  clickedObj.material.emissive.setHex(0xff0000);
-  toggleText(clickedObj.uuid)
-
-  //add wireframe to still see strucutre
-  var geo = new THREE.EdgesGeometry(clickedObj.geometry);
-  var mat = new THREE.LineBasicMaterial({
-    color: 0x000000,
-    linewidth: .1,
-    transparent: true,
-    opacity: 0.2
-  });
-  var wireframe = new THREE.LineSegments(geo, mat);
-  wireframe.name = "wireframe_" + clickedObj.uuid
-  scene.add(wireframe);
-
-  //show attributesBox
-  toggleAttributes(true, id, clickedObj.jsonId)
-
-  render();
-}
-
-//change colour of an object
-function changeObjectColour(type, hex) {
-
-  var colorValue = parseInt ( hex.replace("#","0x"), 16 );
-
-  if (type == "background") {
-    renderer.setClearColor(colorValue);
-    renderer2.setClearColor(colorValue);
-  } else {
-
-    //iterate the scene
-    scene.traverse(function(child) {
-      if (typeof child.coType === "string" && child.coType.toLowerCase() === type) {
-        child.material.color.setHex(colorValue);
-      }
-    });
+  //if one condition is not true hide object
+  if (obj.jsonVisible == false || obj.meshVisible == false) {
+    obj.visible = false;
   }
 
+  //if all conditions are true show object
+  if (obj.jsonVisible == true && obj.meshVisible == true) {
+    obj.visible = true;
+  }
+
+  //update the scene
   render();
 
 }
 
-//show or hide the wireframe
-function toggleWireframe(checked){
+//change the material
+function toggleMaterialSide(elem){
+  localStorage.setItem("viewer_materialSide", elem.value);
 
-  toggleLoader(true)
-  localStorage.setItem("viewer_wireframe", checked);
+  scene.traverse(function(child) {
+    if (child.type === "Mesh") {
 
-  if (checked){
+      var material = child.material;
+
+      if (elem.value == "front"){
+        material.side = THREE.FrontSide;
+      } else if (elem.value == "back"){
+        material.side = THREE.BackSide;
+      } else if (elem.value == "double"){
+        material.side = THREE.DoubleSide;
+      } else if (elem.value == "intelligent"){
+        //// TODO: implement intelligent
+        material.side = THREE.DoubleSide;
+      } else {
+        material.side = THREE.DoubleSide; //backup for failing
+      }
+
+      child.material = material;
+
+    }
+  });
+
+  render();
+}
+
+function toggleWireframe(bool){
+
+  //save variable
+  localStorage.setItem("viewer_edges", bool)
+
+  toggleSpinner(true);
+
+  if (bool){
 
     //traverse scene
     scene.traverse(function(child) {
       if (child.type === "Mesh") {
-        var geo = new THREE.EdgesGeometry(child.geometry);
-        var mat = new THREE.LineBasicMaterial({
-          color: 0x000000,
-          linewidth: .1,
-          transparent: true,
-          opacity: 0.2
-        });
-        var wireframe = new THREE.LineSegments(geo, mat);
-        wireframe.name = "wireframe_" + child.name
-        wireframe.vtype = "wireframe"
-        scene.add(wireframe);
+        createWireFrame(child);
       }
     });
   } else {
 
     //keep which objects should be deleted
-    var toDel = []
+    var toDel = [];
 
     //iterate the scene
     scene.traverse(function(child) {
       if (child.vtype === "wireframe") {
-        toDel.push(child)
+        toDel.push(child);
       }
     });
 
     //delete
     for (var i = 0; i < toDel.length; i++) {
-      scene.remove(toDel[i])
+      scene.remove(toDel[i]);
     }
 
     //reset list
-    toDel = []
+    toDel = [];
   }
 
   render();
-  toggleLoader(false)
-
+  toggleSpinner(false);
 
 }
 
-//show or hide the normals
-function toggleNormals(checked){
+function toggleNormals(bool){
 
-  toggleLoader(true)
-  localStorage.setItem("viewer_normals", checked);
+  //save variable
+  localStorage.setItem("viewer_normals", bool)
 
-  if (checked){
+  toggleSpinner(true);
 
-    //traverse scene
-    scene.traverse(function(child) {
-      if (child.type === "Mesh") {
-        var normal = new FaceNormalsHelper(child, 2, 0x00ff00, 1);
-        normal.vtype = "normal"
-        scene.add(normal);
+    if (bool){
+
+      //traverse scene
+      scene.traverse(function(child) {
+        if (child.type === "Mesh") {
+          createNormals(child);
+        }
+      });
+    } else {
+
+      //keep which objects should be deleted
+      var toDel = [];
+
+      //iterate the scene
+      scene.traverse(function(child) {
+        if (child.vtype === "normal") {
+          toDel.push(child);
+        }
+      });
+
+      //delete
+      for (var i = 0; i < toDel.length; i++) {
+        scene.remove(toDel[i]);
       }
-    });
-  } else {
 
-    //keep which objects should be deleted
-    var toDel = []
-
-    //iterate the scene
-    scene.traverse(function(child) {
-      if (child.vtype === "normal") {
-        toDel.push(child)
-      }
-    });
-
-    //delete
-    for (var i = 0; i < toDel.length; i++) {
-      scene.remove(toDel[i])
+      //reset list
+      toDel = [];
     }
 
-    //reset list
-    toDel = []
-  }
+    render();
+    toggleSpinner(false);
+}
 
-  render();
-  toggleLoader(false)
+function toggleAxis(bool){
 
 }
 
-function toggleJSON(jsonId){
+//change the background Color of the viewer
+function changeBackground(colour){
 
-  //iterate the scene
+  scene.background = new THREE.Color(parseInt(colour));
+
+  render();
+}
+
+//change the colour of an mesh in the viewer
+function changeObjectColour(colour, coType){
   scene.traverse(function(child) {
-    if (child.jsonId === jsonId) {
-
-      //toggle visibility
-      if (child.jsonVisible == false){
-        child.jsonVisible = true;
-      } else {
-        child.jsonVisible = false;
-      }
-
-      //check if all conditions for visibility apply
-      if (child.jsonVisible == false){
-        child.visible = false
-      }
-      if (child.jsonVisible == true && child.meshVisible == true){
-        child.visible = true;
-      }
+    if (child.type === "Mesh" && child.coType.toLowerCase() == coType) {
+      child.material.color.setHex(colour);
     }
   });
 
   render();
-
 }
 
-//show or hide a single mesh
-function toggleMesh(id){
-  //get this object
-  var obj = scene.getObjectByName(id);
+//set camera focus on file
+function setCamera(jsonId){
 
-  //toggle visibility
-  if (obj.meshVisible == false){
-    obj.meshVisible = true;
-  } else {
-    obj.meshVisible = false;
+  var stats = jsonDict[jsonId];
+
+  var minX = stats[0];
+  var minY = stats[1];
+  var avgX = stats[3];
+  var avgY = stats[4];
+  var avgZ = stats[5];
+  var maxX = stats[6];
+  var maxY = stats[7];
+  var maxZ = stats[8];
+
+  //calculate the width (required for camera)
+  var width = ((maxX - minX) + (maxY - minY)) / 2;
+  if (width < 5) {
+    width = 5;
   }
 
-  //check if all conditions for visibility apply
-  if (obj.meshVisible == false){
-    obj.visible = false
-  }
-  if (obj.jsonVisible == true && obj.meshVisible == true){
-    obj.visible = true;
-  }
+  //set camera position
+  camera.position.set(avgX, avgY, width * 1.2);
+  camera.lookAt(avgX, avgY, avgZ);
 
+  //set light
+  spot_light.position.set(minX, minY, maxZ + 1000);
+  spot_light.target.position.set(avgX, avgY, 0);
+
+  //set controls position
+  controls.target.set(avgX, avgY, 0);
+  controls.update();
+
+  //render the scene so thats's visible
   render();
+
+
 }
 
 //update the viewer as well as the axis
 function render() {
-    renderer.render(scene,camera)
-    if (renderer2 != undefined){
-      renderer2.render(scene2,camera2);
-    }
+  renderer.render(scene, camera);
+  if (renderer2 != undefined) {
+    renderer2.render(scene2, camera2);
+  }
 }
-
-/*
-//render the scenes
-function render() {
-
-    render();
-    renderer2.render(scene2,camera2);
-
-}
-
-//called with any movement
-(function animate() {
-
-  requestAnimationFrame(animate);
-
-  if (camera != null){
-    camera2.position.copy(camera.position);
-  	camera2.position.sub(controls.target);
-
-    camera2.lookAt(scene2.position);
-    render();
-
-  };
-
-
-})();
-*/
