@@ -88,10 +88,6 @@ function calcStats(json, jsonId){
     */
 }
 
-function getMetadata(json){
-
-}
-
 function getValKey(object, value){
   //get the key for a value
   return Object.keys(object).find(key => object[key] === value);
@@ -100,4 +96,30 @@ function getValKey(object, value){
 //inserts an element after another element
 function insertAfter(referenceNode, newNode) {
   referenceNode.parentNode.insertBefore(newNode, referenceNode.nextSibling);
+}
+
+//loads an script dynamically
+function loadScript(url, callback){
+
+    var script = document.createElement("script")
+    script.type = "text/javascript";
+
+    if (script.readyState){  //IE
+        script.onreadystatechange = function(){
+            if (script.readyState == "loaded" ||
+                    script.readyState == "complete"){
+                script.onreadystatechange = null;
+                callback();
+            }
+        };
+    } else {  //Others
+        script.onload = function(){
+            callback();
+        };
+    }
+
+    script.src = url;
+    document.getElementsByTagName("head")[0].appendChild(script);
+
+    return true
 }

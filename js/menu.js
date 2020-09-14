@@ -21,48 +21,29 @@ async function handleSingleFile(file, existingJsonId){
     }
 
     //load json file to memory
-    async function loadJSON(url) {
+    async function loadJSON(file) {
 
-      var objectURL = window.URL.createObjectURL(url);
+      var fr = new FileReader();
+      fr.addEventListener("load", async e => {
+          try{
+            json = JSON.parse(fr.result)
+            workWithJSON([json, file_name, file_type, file_size]);
+          } catch{
+            console.log("HIHI");
+            window.alert("File " + file.name + " has an error and cannot be loaded!");
+          }
+      });
 
-      try {
-        //load json
-        var getjson = await $.getJSON(objectURL, function(data) {
-          _data = data;
-        });
-      } catch (e) {
-        return (null)
-      }
-
-      return (_data);
+      fr.readAsText(file);
 
     }
 
-    //call json loading function
-    var json = await loadJSON(file)
+    loadJSON(file)
 
-    //json file has an error and cannot be loaded
-    if (json == null) {
-      window.alert("File " + file.name + ".json has an error and cannot be loaded!");
-      return null
-    } else {
-      return [json, file_name, file_type, file_size]
-    }
   }
 
-  if (existingJsonId == null){
-    var jsonFile = await loadFile(file);
-  } else {
 
-    var json = jsonDict[existingJsonId];
-    var jsonName = jsonIdDict[existingJsonId];
-    var jsonType = jsonStats[existingJsonId][13];
-
-    var jsonFile = [json, jsonName, jsonType];
-  }
-
-  //proceed only with valid files
-  if (jsonFile != null) {
+  async function workWithJSON(jsonFile){
 
     //create an unique id
     var jsonId = create_UUID()
@@ -101,8 +82,20 @@ async function handleSingleFile(file, existingJsonId){
     //add the objects to the menu
     addToObjects(jsonId);
     toggleBox("objects", true);
-
   }
+
+
+  if (existingJsonId == null){
+    var jsonFile = loadFile(file);
+  } else {
+
+    var json = jsonDict[existingJsonId];
+    var jsonName = jsonIdDict[existingJsonId];
+    var jsonType = jsonStats[existingJsonId][13];
+    var jsonFile = [json, jsonName, jsonType];
+    workWithJSON(jsonFile)
+  }
+
 }
 
 //function to handle all the files
@@ -186,7 +179,6 @@ function handleObjectSelect(jsonId, objId){
   jumpToObject(objId);
   selectObject(objId);
   highlightMesh(objId, jsonId);
-  toggleBox("attributes", true);
   displayAttributeBox(objId, jsonId)
   clickedObjId = jsonId + "_" + objId;
 }

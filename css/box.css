@@ -6,6 +6,7 @@
   background-color: white;
   resize: horizontal;
   overflow: auto;
+  max-width: 49%;
 }
 
 .box_hidden{
@@ -89,6 +90,7 @@
 
 .small_box_text{
   font-size: small;
+  word-break: break-all;
 }
 
 #files{
@@ -140,6 +142,15 @@
   width: 370px;
 }
 
+#cameraBox{
+  position: absolute;
+  right: 17px;
+  top: 75px;
+  padding: 5px;
+  border: 1px solid black;
+  background: white;
+}
+
 .tdBox {
   border-bottom: 1px solid #ddd;
   height: 30px;
@@ -153,7 +164,6 @@
   display: flex;
   word-break: break-all;
 }
-
 
 .trBox{
   cursor: pointer;

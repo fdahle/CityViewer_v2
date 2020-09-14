@@ -1,23 +1,26 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 
 <head>
-  <meta charset=utf-8>
   <title>CityViewer</title>
+  <meta charset=utf-8>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="Description" content="An online viewer for CityJSON-files.">
+  <meta name="theme-color" content="#3E4EB8"/>
 
-  <script src="js/ext/jquery-3.3.1.min.js"></script>
+
   <script src="js/ext/three.js"></script>
   <script src="js/ext/OrbitControls.js"></script>
   <script src="js/ext/FaceNormalsHelper.js"></script>
   <script src="js/ext/earcut.js"></script>
+  <script src="js/ext/basicContext.min.js"></script>
 
-  <link rel="icon" type="image/x-icon" href="public/favicon.ico">
   <link rel="manifest" href="public/manifest.json">
+  <link rel="icon" type="image/x-icon" href="public/favicon.ico">
+  <link rel="apple-touch-icon" href="public/logo-192x192.png">
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-contextmenu/2.7.1/jquery.contextMenu.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-contextmenu/2.7.1/jquery.ui.position.js"></script>
-  <script src="https://bossanova.uk/jexcel/v4/jexcel.js"></script>
-  <script src="https://bossanova.uk/jsuites/v3/jsuites.js"></script>
+  <!--<script src="https://bossanova.uk/jexcel/v4/jexcel.js"></script>
+  <script src="https://bossanova.uk/jsuites/v3/jsuites.js"></script>-->
 
   <script src="js/document.js"></script>
   <script src="js/viewer.js"></script>
@@ -27,11 +30,13 @@
   <script src="js/overview.js"></script>
 
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto&display=swap">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jquery-contextmenu/2.7.1/jquery.contextMenu.min.css">
   <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.0.8/css/all.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/flag-icon-css/3.5.0/css/flag-icon.min.css">
-  <link rel="stylesheet" href="https://bossanova.uk/jexcel/v4/jexcel.css" type="text/css" />
-  <link rel="stylesheet" href="https://bossanova.uk/jsuites/v3/jsuites.css" type="text/css" />
+  <!--<link rel="stylesheet" href="https://bossanova.uk/jexcel/v4/jexcel.css" type="text/css" />
+  <link rel="stylesheet" href="https://bossanova.uk/jsuites/v3/jsuites.css" type="text/css" />-->
+
+  <link rel="stylesheet" href="css/ext/basicContext.min.css">
+
 
   <link rel="stylesheet" href="css/main.css">
   <link rel="stylesheet" href="css/controls.css">
@@ -41,16 +46,17 @@
   <link rel="stylesheet" href="css/context.css">
   <link rel="stylesheet" href="css/overview.css"
 
+
 </head>
 
 <body>
 
-  <div id="viewer"></div>
+  <main id="viewer"></main>
   <div id="viewer_axis"></div>
 
   <div id="dropper">
     <form id="dropbox" class="my-form">
-      <img id="logo" src="img/cityjson_logo.svg" width="100">
+      <img id="logo" alt="" src="img/cityjson_logo.svg" width="100">
       <p id="txt_dropper"><span id=txt_dropper1></span><br><span id=txt_dropper2></span></p>
       <input type="file" id="fileElem" accept=".json" onchange="handleFiles(this.files)" multiple style="display: none">
     </form>
@@ -211,11 +217,17 @@
   </div>
 
   <div id="linkBox">
-    <p><a href="https://github.com/tudelft3d/CityJSON-viewer/" target="_blank">GitHub repository</a></p>
+    <p><a href="https://github.com/tudelft3d/CityJSON-viewer/" rel="noopener" target="_blank">GitHub repository</a></p>
   </div>
 
   <div id="infoBox">
     <button id="btn_help" onclick="toggleInfo()"><i class="boxIcon far fa-question-circle"></i><span id="txt_btn_help"></span></button>
+  </div>
+
+  <div id="cameraBox">
+    <button id="btn_camPos" onclick="printCameraInfo('pos')">Position</button>
+    <button id="btn_camPos" onclick="printCameraInfo('lookAt')">Look At</button>
+    <button id="btn_camPos" onclick="printCameraInfo('worldMatrix')">worldMatrix</button>
   </div>
 
   <div id="information" style="display:none">
@@ -321,7 +333,7 @@
               <option id="txt_front_side" value="front">Front side</option>
               <option id="txt_back_side" value="back">Back side</option>
               <option id="txt_double_side" value="double">Double Side</option>
-              <option id="txt_intelligent_side" value="intelligent">Intelligent</option>
+              <option id="txt_intelligent_side" value="intelligent" disabled>Intelligent</option>
             </select>
           </td>
         </tr>
@@ -455,12 +467,6 @@
       <i id="licenceCloseButton" onclick="toggleLicenses()" class="fa fa-times"></i>
     </div>
     <div id="licences_content">
-      <div class="licence_subcaption">JavaScript</div>
-      <div id="licences_js">
-      </div>
-      <div class="licence_subcaption">CSS</div>
-      <div id="licences_css">
-      </div>
     </div>
   </div>
 
@@ -468,14 +474,14 @@
   </div>
 
   <div id="navigation" style="display: none">
-    <button class="naviButton">+ X</button>
-    <button class="naviButton">- X</button>
-    <button class="naviButton">+ Y</button>
-    <button class="naviButton">- Y</button>
-    <button class="naviButton">+ Z</button>
-    <button class="naviButton">- Z</button>
-    <button class="naviButton">+ 90</button>
-    <button class="naviButton naviButtonLast">- 90</button>
+    <button onclick="setCameraDefaultPos('+X')" class="naviButton">+ X</button>
+    <button onclick="setCameraDefaultPos('-X') "class="naviButton">- X</button>
+    <button onclick="setCameraDefaultPos('+Y')" class="naviButton">+ Y</button>
+    <button onclick="setCameraDefaultPos('-Y')" class="naviButton">- Y</button>
+    <button onclick="setCameraDefaultPos('+Z')" class="naviButton">+ Z</button>
+    <button onclick="setCameraDefaultPos('+-Z')" class="naviButton">- Z</button>
+    <button onclick="setCameraDefaultPos('+90')" class="naviButton">+ 90</button>
+    <button onclick="setCameraDefaultPos('-90')" class="naviButton naviButtonLast">- 90</button>
   </div>
 
   <div id="overlay" onclick="closeAll()">

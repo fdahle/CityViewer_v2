@@ -1,4 +1,10 @@
-async function toggleOverview(jsonId){
+async function toggleOverview(){
+
+  //load script
+  loadScript("https://bossanova.uk/jexcel/v4/jexcel.js")
+  loadScript("https://bossanova.uk/jsuites/v3/jsuites.js")
+
+  var jsonId = clickedContextFileId;
 
   if (document.getElementById("overview").style.display == "none"){
     toggleSpinner(true);

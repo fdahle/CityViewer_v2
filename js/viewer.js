@@ -8,14 +8,6 @@ function initViewer(viewer) {
   //init scene
   scene = new THREE.Scene();
 
-  //init camera
-  camera = new THREE.PerspectiveCamera(
-    75, // Field of view
-    window.innerWidth / window.innerHeight, // Aspect ratio
-    0.01, // Near clipping pane  // if its smaller (for example 0.0001) the object start flickering when moving
-    1000000000 // Far clipping pane
-  );
-
   //init renderer
   renderer = new THREE.WebGLRenderer({
     antialias: true, //TODO: check what does this do?
@@ -24,6 +16,20 @@ function initViewer(viewer) {
   });
   renderer.setSize(viewer.offsetWidth, viewer.offsetHeight);
   renderer.setClearColor(0xFFFFFF);
+
+  //init camera
+  var fov = 75;
+  var aspect = window.innerWidth / window.innerHeight;
+  var near = 0.01;
+  var far = 1000000000;
+  camera = new THREE.PerspectiveCamera(fov, aspect, near, far);
+  camera.updateProjectionMatrix();
+  camera.up.set(0, 0, 1);
+
+  //render & orbit controls
+  controls = new THREE.OrbitControls(camera, renderer.domElement);
+  controls.screenSpacePanning = false;
+  controls.update();
 
   //enable shadow
   renderer.shadowMap.enabled = true;
@@ -44,13 +50,16 @@ function initViewer(viewer) {
   spot_light.intensity = 0.4;
   scene.add(spot_light);
 
-  //background color
-  var backgroundColor = localStorage.getItem("colour_background");
-  scene.background = new THREE.Color(parseInt(backgroundColor));
+  //axes = new THREE.AxesHelper();
+  //scene.add(axes);
 
-  //render & orbit controls
-  controls = new THREE.OrbitControls(camera, renderer.domElement);
-  controls.screenSpacePanning = false;
+  //var gridXZ = new THREE.GridHelper(10, 1);
+  //scene.add(gridXZ);
+
+
+  //background color
+  var backgroundColour = localStorage.getItem("colour_background");
+  changeBackground(backgroundColour)
 
   //add renderer to object
   viewer.appendChild(renderer.domElement);
@@ -62,9 +71,15 @@ function initViewer(viewer) {
 //init the axis
 function initAxis(viewer_axis) {
 
+  //x = red
+  //y = green
+  //z = blue
+
   // renderer
-  renderer2 = new THREE.WebGLRenderer();
-  renderer2.setClearColor(0xf0f0f0, 1);
+  renderer2 = new THREE.WebGLRenderer({
+    alpha: true
+  });
+  renderer.setClearColor( 0x000000, 0 ); // the default
   renderer2.setSize(viewer_axis.offsetWidth, viewer_axis.offsetHeight);
   viewer_axis.appendChild(renderer2.domElement);
 
@@ -80,6 +95,7 @@ function initAxis(viewer_axis) {
   scene2.add(axes2);
 
   render();
+  animate();
 
 }
 
@@ -181,8 +197,9 @@ async function renderJSON(jsonId, json, fileSize) {
         point[0],
         point[1],
         point[2]
-      );
+      )
     }
+
     return pointsDict
   }
 
@@ -293,7 +310,7 @@ async function renderJSON(jsonId, json, fileSize) {
         material.side = THREE.DoubleSide; //backup for failing
       }
 
-    
+
     //check if color is predefined
     if (localStorage.getItem("colour_" + coType.toLowerCase()) === null) {
 
@@ -484,12 +501,13 @@ async function renderJSON(jsonId, json, fileSize) {
   scene.add(spot_light.target);
 
   //set camera position
-  camera.position.set(avgX, avgY, width * 1.2);
-  camera.lookAt(avgX, avgY, avgZ);
-  //camera.rotation.set(1.0250179306032716, 0.011690303649862465, -0.01924645011326)
+  camera.position.set(minX, avgY, 0.3*maxZ);
+  camera.rotation.x = 180 * THREE.Math.DEG2RAD;
+  camera.lookAt(avgX, avgY, minZ);
+  camera.updateProjectionMatrix();
 
   //set controls position
-  controls.target.set(avgX, avgY, 0);
+  controls.target.set(avgX, avgY, minZ);
   controls.update();
 
   //render the scene so thats's visible
@@ -841,8 +859,9 @@ function changeObjectColour(colour, coType){
 }
 
 //set camera focus on file
-function setCamera(jsonId){
+function setCamera(){
 
+  var jsonId = clickedContextFileId;
   var stats = jsonDict[jsonId];
 
   var minX = stats[0];
@@ -878,10 +897,66 @@ function setCamera(jsonId){
 
 }
 
+function setCameraDefaultPos(pos){
+
+  jsonId = clickedFileId
+
+  var stats = jsonDict[jsonId];
+
+  var minX = stats[0];
+  var minY = stats[1];
+  var avgX = stats[3];
+  var avgY = stats[4];
+  var avgZ = stats[5];
+  var maxX = stats[6];
+  var maxY = stats[7];
+  var maxZ = stats[8];
+
+  if(pos == "+x"){
+
+    console.log("+ X");
+
+    camera.position.set(avgX, avgY, maxZ+500);
+    camer.lookat(new THREE.Vector3(avX, avgY, minZ));
+  } else if(pos == "-x")
+
+    console.log("- X");
+    camera.position.x = 1;
+
+  render();
+
+  console.log(pos);
+}
+
+function printCameraInfo(type){
+  console.log(camera);
+  if (type == "pos"){
+    console.log(camera.position);
+  } else if (type == "lookAt"){
+
+  } else if (type == "worldMatrix"){
+
+  }
+}
+
 //update the viewer as well as the axis
 function render() {
+  camera.updateProjectionMatrix();
   renderer.render(scene, camera);
+
   if (renderer2 != undefined) {
     renderer2.render(scene2, camera2);
   }
+}
+
+function animate(){
+  requestAnimationFrame( animate );
+
+  controls.update();
+
+  camera2.position.copy( camera.position );
+  camera2.position.sub( controls.target ); // added by @libe
+
+  camera2.lookAt( scene2.position );
+  render();
 }

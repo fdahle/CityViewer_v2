@@ -17,6 +17,9 @@ async function initDocument() {
     return
   }
 
+  //check localStorage
+  initLocalStorage();
+
   //init viewer
   var viewer = document.getElementById("viewer");
   await initViewer(viewer);
@@ -26,7 +29,7 @@ async function initDocument() {
 
   //init axisHelper
   var viewer_axis = document.getElementById("viewer_axis");
-  initAxis(viewer_axis);
+   initAxis(viewer_axis);
 
   //init dropbox
   var dropbox = document.getElementById("dropbox");
@@ -36,13 +39,17 @@ async function initDocument() {
   //init events
   initEvents();
 
-  //check localStorage
-  initLocalStorage();
-
   //init the settings
   initSettings();
 
+  //add the text to all dom elements
   toggleText(localStorage.getItem("settings_language"));
+
+  //build Context Menus
+  buildContextMenus();
+
+  //init serviceWorker
+  //initServiceWorker();
 }
 
 //init all actions for dropbox
@@ -115,6 +122,18 @@ new ResizeObserver(function(){
   storeBoxSize(attributesBox)
 }).observe(attributesBox);
 
+}
+
+//init the offline functionality
+function initServiceWorker(){
+  if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js')
+    .then((reg) => {
+      console.log('Service worker registered -->', reg);
+    }, (err) => {
+      console.error('Service worker not registered -->', err);
+    });
+  }
 }
 
 //init the local storage variables
@@ -249,7 +268,7 @@ function addToObjects(jsonId) {
     if (parentId != null){
       var parent = document.getElementById("tr_" + parentId);
       var marg = parseFloat(parent.firstChild.firstChild.style.marginLeft);
-      marg = marg + 15;
+      marg = marg + 10;
       div.style.marginLeft = marg + "px";
       var childLevel = parent.getAttribute("childLevel");
       tr.setAttribute("childLevel", parseInt(childLevel) + 1);
@@ -435,26 +454,29 @@ function toggleChildrenFiles(row){
   var tr = row.parentElement.parentElement.parentElement;
   var trLevel = tr.getAttribute("childLevel");
 
+  //show the elements
   if (icon.classList.contains("fa-chevron-right")){
     icon.classList.remove("fa-chevron-right");
     icon.classList.add("fa-chevron-down");
 
-    while ($(tr).next().attr("childLevel") > trLevel){
-      if ($(tr).next().attr("childLevel") == parseInt(trLevel) + 1){
-        $(tr).next().css("display","block");
+    //iterate all tr
+    while (tr.nextElementSibling != undefined && tr.nextElementSibling.getAttribute("childLevel") > trLevel){
+      if (tr.nextElementSibling.getAttribute("childLevel") == parseInt(trLevel) + 1){
+        tr.nextElementSibling.style.display = "block";
       }
-      tr = $(tr).next();
+      tr = tr.nextElementSibling;
     }
 
+  //hide the elements
   } else {
     icon.classList.remove("fa-chevron-down");
     icon.classList.add("fa-chevron-right");
 
-    while ($(tr).next().attr("childLevel") > trLevel){
-      if ($(tr).next().attr("childLevel") == parseInt(trLevel) + 1){
-        $(tr).next().css("display","none");
+    while (tr.nextElementSibling != undefined && tr.nextElementSibling.getAttribute("childLevel") > trLevel){
+      if (tr.nextElementSibling.getAttribute("childLevel") == parseInt(trLevel) + 1){
+        tr.nextElementSibling.style.display = "none";
       }
-      tr = $(tr).next();
+      tr = tr.nextElementSibling;
     }
   }
 }
@@ -476,6 +498,7 @@ function addToFiles(jsonId) {
   tr.id = "tr_" + jsonId;
 
   tr.onclick = function(e){
+
     //this click event should not be done if the checkbox is selected
     if (e.target.classList.contains("box_check")){
       return
@@ -483,6 +506,15 @@ function addToFiles(jsonId) {
     var jsonId = this.id.split("_")[1];
     handleFileSelect(jsonId);
   }
+
+  //catch normal context menu and put own context menu in there
+  tr.addEventListener('contextmenu', function(ev) {
+      clickedContextFileId = tr.id.split("_")[1];
+      ev.preventDefault();
+      basicContext.show(contextMenuFiles, ev)
+      return false;
+  }, false);
+
 
   //checkbox for toggling File
   var checkBox = document.createElement('input');
@@ -763,6 +795,12 @@ function displayAttributeBox(objId, jsonId){
     table.append(tr);
   }
 
+  //only show box if not hidden
+  if (document.getElementById("attributesHideButton").classList.contains("fa-eye-slash")){
+    toggleBox("attributes", true);
+  }
+
+
 }
 
 //jump to a particular file in the box
@@ -785,18 +823,19 @@ function jumpToObject(objId){
     var origTr = tr;
 
     //display children after this tr
-    while ($(tr).next().attr("childLevel") >= childLevel){
-      if ($(tr).next().attr("childLevel") == parseInt(childLevel)){
-        $(tr).next().css("display","block");
+    while (tr.nextElementSibling != undefined && tr.nextElementSibling.getAttribute("childLevel") >= childLevel){
+      if (tr.nextElementSibling.getAttribute("childLevel") == parseInt(childLevel)){
+        tr.nextElementSibling.style.display = "block";
       }
-      tr = $(tr).next();
+      tr = tr.nextElementSibling;
     }
 
     tr = origTr;
+
     //show previous children
-    while ($(tr).attr("childLevel") > 0){
-      $(tr).css("display","block");
-      tr = $(tr).prev();
+    while (tr != undefined && tr.getAttribute("childLevel") > 0){
+      tr.style.display = "block";
+      tr = tr.previousSibling;
     }
 
     //sometimes you need the first method to get the element, sometimes the second..
@@ -828,9 +867,9 @@ function getChildrenRows(objId){
 
   var ids = [];
 
-  while ($(tr).next().attr("childLevel") > childLevel){
-    tr = $(tr).next();
-    var id = $(tr).attr("id").split("_")[1];
+  while (tr.nextElementSibling != undefined && tr.nextElementSibling.getAttribute("childLevel") >= childLevel){
+    tr = tr.nextElementSibling;
+    var id = tr.id.split("_")[1];
     ids.push(id);
   }
 
@@ -970,49 +1009,55 @@ function toggleLicenses(){
   if (document.getElementById("licences").style.display == "none"){
     document.getElementById("licences").style.display="block";
 
-    var contentJS = document.getElementById("licences_js");
+    var content = document.getElementById("licences_content");
 
     var ul = document.createElement("ul")
 
+    //get keys of dict to sort alphabetically
+    var keys = Object.keys(licences);
+    keys.sort(function (a, b) {
+      return a.toLowerCase().localeCompare(b.toLowerCase());
+    });
+
+
     //create ul
-    for (var key in licencesJS){
+    for (var key of keys){
       var li = document.createElement("li");
       var link = document.createElement("a")
-      link.href="#licence_" + key;
+      link.href="#licence_" + key.toLowerCase();
       link.innerHTML = key;
       li.append(link);
       ul.append(li);
 
     };
-    contentJS.append(ul)
+    content.append(ul)
 
-    for (var key in licencesJS){
+    for (var key of keys){
 
-      var licence = licencesJS[key]
+      var licence = licences[key]
 
       var divCaption = document.createElement("div");
       divCaption.innerHTML = key;
-      divCaption.id = "licence_" + key;
+      divCaption.id = "licence_" + key.toLowerCase();
       divCaption.classList.add("licence_subsub");
-      contentJS.append(divCaption);
+      content.append(divCaption);
 
       var link = document.createElement("a");
       link.innerHTML = licence[0];
       link.href = licence[0];
       link.target = "_blank";
       link.classList.add("licence_link");
-      contentJS.append(link);
+      content.append(link);
 
       var divText = document.createElement("div");
       divText.innerHTML = licence[1];
       divText.classList.add("licence_text");
-      contentJS.append(divText);
+      content.append(divText);
     }
 
   } else {
     document.getElementById("licences").style.display="none";
-    document.getElementById("licences_js").innerHTML="";
-    document.getElementById("licences_css").innerHTML="";
+    document.getElementById("licences_content").innerHTML="";
   }
 
 
@@ -1037,9 +1082,15 @@ function toggleSpinner(bool) {
 
 //close all windows due to overlay
 function closeAll(){
+
   document.getElementById("overlay").style.zIndex = -1;
 
-  document.getElementById("settings").style.display = "none";
+  if (document.getElementById("licences").style.display == "none"){
+    document.getElementById("settings").style.display = "none";
+  } else {
+    document.getElementById("overlay").style.zIndex = 1;
+  }
+  document.getElementById("licences").style.display = "none";
   document.getElementById("statistics").style.display = "none";
   document.getElementById("metadata").style.display = "none";
   document.getElementById("information").style.display = "none";
@@ -1076,13 +1127,14 @@ function toggleOverlayEvent(bool){
 }
 
 //show or hide the statistics box
-function toggleStatistics(jsonId){
+function toggleStatistics(){
 
   if (document.getElementById("statistics").style.display == "none"){
 
     var table = document.getElementById("statisticsTable");
 
     //get the information for this file
+    var jsonId = clickedContextFileId;
     var stats = jsonStats[jsonId]
     var objectsCount = jsonObjectsCount[jsonId];
 
@@ -1153,10 +1205,11 @@ function clearStatistics(){
   }
 }
 
-function toggleMetadata(jsonId){
+function toggleMetadata(){
   if (document.getElementById("metadata").style.display == "none"){
 
     //get the information for this file
+    var jsonId = clickedContextFileId;
     var stats = jsonStats[jsonId]
 
     document.getElementById("td_meta_minX").innerHTML = stats[0];
@@ -1210,7 +1263,8 @@ function resetLocalStorage(){
 function searchBox(type){
   var table = document.getElementById(type + "Table");
 
-  var inputText = document.getElementById(type + "SearchField").value;
+  var inputText = new RegExp(document.getElementById(type + "SearchField").value);
+
 
   var searchIcon = document.getElementById(type + "SearchButton");
 
@@ -1255,19 +1309,18 @@ function writeToLogger(text){
 
 }
 
-function contextEditFile(jsonId){
-
+function contextEditFile(){
+  var jsonId = clickedContextFileId;
 }
 
-function contextSettings(jsonId){
-
+function contextSettings(){
+  var jsonId = clickedContextFileId;
 }
 
-function deleteFile(jsonId){
+function deleteFile(){
 
+  var jsonId = clickedContextFileId;
   var jsonName = jsonIdDict[jsonId];
-
-  console.log("HI");
 
   if (localStorage.getItem("settings_askDelete") == "true"){
     if (confirm("Are you sure you want to delete '" + jsonName + "'? This action cannot be undone.") == false){
@@ -1323,16 +1376,15 @@ function deleteFile(jsonId){
   delete jsonObjectsCount[jsonId];
 }
 
-function duplicateFile(jsonId){
-
+function duplicateFile(){
+  var jsonId = clickedContextFileId;
   var jsonContent = jsonDict[jsonId];
   var jsonName = jsonIdDict[jsonId];
   handleSingleFile(jsonContent, jsonId);
   writeToLogger("- '" + jsonName + "' will be duplicated.")
 }
 
-//context menu
-$(function() {
+function buildContextMenus(){
 
   var lang = localStorage.getItem("settings_language");
   var langDict = null;
@@ -1342,78 +1394,29 @@ $(function() {
     langDict = lang_de;
   }
 
-  $('#filesTable').contextMenu({
-    selector: 'tr',
-    callback: function(key, options) {
-      id = $(this).attr('id').split("_")[1];
-      if (key == "goto") {
-        setCamera(id);
-      } else if (key == "edit") {
-        contextEditFile(id);
-      } else if (key == "duplicate") {
-        duplicateFile(id);
-      } else if (key == "download") {
-        contextDownloadFile(id);
-      } else if (key == "delete") {
-        deleteFile(id);
-      } else if (key == "overview"){
-        toggleOverview(id);
-      } else if (key == "metadata"){
-        toggleMetadata(id);
-      } else if (key == "statistics") {
-        toggleStatistics(id);
-      } else if (key == "settings") {
-        contextSettingsForFile(id);
-      } else if (key == "quit") {
-
-      }
-    },
-    items: {
-      "goto": {
-        name: langDict["txt_context_goto"],
-        icon: "fas fa-crosshairs"
-      },
-      "sep1": "---------",
-      "edit": {
-        name: langDict["txt_context_edit"],
-        icon: "edit"
-      },
-      "duplicate": {
-        name: langDict["txt_context_duplicate"],
-        icon: "copy"
-      },
-      "download": {
-        name: langDict["txt_context_download"],
-        icon: "fas fa-download"
-      },
-      "delete": {
-        name: langDict["txt_context_delete"],
-        icon: "delete"
-      },
-      "sep2": "---------",
-      "overview":{
-        name: langDict["txt_context_overview"],
-        icon: "fas fa-table"
-      },
-      "metadata": {
-        name: langDict["txt_context_metadata"],
-        icon: "fas fa-globe"
-      },
-      "statistics": {
-        name: langDict["txt_context_statistics"],
-        icon: "fas fa-info-circle"
-      },
-      "settings": {
-        name: langDict["txt_context_settings"],
-        icon: "fas fa-cog"
-      },
-      "sep3": "---------",
-      "quit": {
-        name: langDict["txt_context_quit"],
-        icon: function($element, key, item) {
-          return 'context-menu-icon context-menu-icon-quit';
-        }
-      }
-    }
-  });
-});
+  contextMenuFiles = [
+    //go to
+    { type: 'item', title: langDict["txt_context_goto"], icon: 'fas fa-crosshairs', fn: function() {setCamera()}},
+    { type: 'separator' },
+    //edit
+    { type: 'item', title: langDict["txt_context_edit"], icon: 'fas fa-edit', fn: function() {contextEditFile()}},
+    //duplicate
+    { type: 'item', title: langDict["txt_context_duplicate"], icon: 'fas fa-copy', fn: function() {duplicateFile()}},
+    //download
+    { type: 'item', title: langDict["txt_context_download"], icon: 'fas fa-download', fn: function() {contextDownloadFile()}},
+    //delete
+    { type: 'item', title: langDict["txt_context_delete"], icon: 'fas fa-trash', fn: function() {deleteFile()}},
+    { type: 'separator' },
+    //overview
+    { type: 'item', title: langDict["txt_context_overview"], icon: 'fas fa-table', fn: function() {toggleOverview()}},
+    //metadata
+    { type: 'item', title: langDict["txt_context_metadata"], icon: 'fas fa-globe', fn: function() {toggleMetadata()}},
+    //statistics
+    { type: 'item', title: langDict["txt_context_statistics"], icon: 'fas fa-info-circle', fn: function() {toggleStatistics()}},
+    //settings
+    { type: 'item', title: langDict["txt_context_settings"], icon: 'fas fa-cog', fn: function() {}},
+    { type: 'separator' },
+    //quit
+    { type: 'item', title: 'Logout', icon: 'fas fa-times', fn: function() {}}
+  ]
+}

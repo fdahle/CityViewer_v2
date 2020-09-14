@@ -32,7 +32,11 @@ var jsonObjectsCount = {};
 //determine which objects are marked
 var clickedObjId = null;
 var clickedFileId = null;
+var clickedContextFileId = null;
 var highlightedObjects = [];
+
+//for the contextMenus
+var contextMenuFiles = null;
 
 var lang = window.navigator.language.split("-")[0];
 
@@ -208,7 +212,6 @@ lang_de = {
   txt_general_options: "Allgemeine Optionen",
   txt_display_log: "Log anzeigen",
   txt_display_navi: "Navigationsmenü anzeigen",
-  txt_ask_save: "Beim Löschen nachfragen",
   txt_json_options: "JSON-Optionen",
   txt_verify_json: "JSON-Dateien verifizieren",
   txt_beautify_json: "Formatierte JSON-Dateien speichern",
@@ -218,12 +221,12 @@ lang_de = {
   txt_settings_advanced: "Erweiterte Optionen",
   txt_reset_settings: "Alle Einstellungen<br>zurücksetzen",
   txt_show_licences: "Lizenzen anzeigen",
-  txt_helper_options: "Helper Options",
+  txt_helper_options: "Helfer-Optionen",
   txt_show_edges: "Kanten anzeigen",
   txt_show_normals: "Normal-Vektoren anzeigen",
   txt_show_axis: "Axis anzeigen",
   txt_material_options: "Material-Optionen",
-  txt_material_side: "Material side",
+  txt_material_side: "Material-seite",
   txt_front_side: "Vorderseitig",
   txt_back_side: "Hinterseitig",
   txt_double_side: "Doppelseiting",
@@ -238,24 +241,24 @@ lang_de = {
   txt_colour_background: "Hintergrund",
   txt_colour_edges: "Kante",
   txt_colour_normals: "Normal-Vektor",
-  txt_colour_caption_default: "Default CityJSON Objects",
+  txt_colour_caption_default: "Standard CityJSON Objekte",
   txt_colour_building: "Gebäude",
-  txt_colour_buildingpart: "GebäudeTeil",
-  txt_colour_buildinginstallation: "BuildingInstallation",
+  txt_colour_buildingpart: "Gebäude-Teil",
+  txt_colour_buildinginstallation: "Gebäude-Installation",
   txt_colour_bridge: "Brücke",
   txt_colour_bridgepart: "Brückenteil",
-  txt_colour_bridgeinstallation: "BridgeInstallation",
-  txt_colour_bridgeconstructionelement: "BridgeConstructionElement",
-  txt_colour_cityobjectgroup: "CityObjectGroup",
-  txt_colour_cityfurniture: "CityFurniture",
+  txt_colour_bridgeinstallation: "Brücken-Installation",
+  txt_colour_bridgeconstructionelement: "Brücken-Konstruktions-Element",
+  txt_colour_cityobjectgroup: "Stadt-Objekt",
+  txt_colour_cityfurniture: "Stadt-Einrichtung",
   txt_colour_genericcityobject: "Generisches Stadt-Objekt",
-  txt_colour_landuse: "LandUse",
+  txt_colour_landuse: "Landnutzung",
   txt_colour_plantcover: "Vegetation",
   txt_colour_railway: "Eisenbahn",
   txt_colour_road: "Straße",
-  txt_SolitaryVegetationObject: "SolitaryVegetationObject",
+  txt_SolitaryVegetationObject: "Einzelne Vegetation",
   txt_TINRelief: "TINRelief",
-  txt_TransportSquare: "TransportSquare",
+  txt_TransportSquare: "Transport",
   txt_Tunnel: "Tunnel",
   txt_TunnelPart: "Tunnel-Teil",
   txt_TunnelInstallation: "Tunnel-Installation",
@@ -298,49 +301,7 @@ lang_de = {
   txt_overview_caption: "Übersicht"
 };
 
-var licencesJS = {
-  "jQuery": ["https://jquery.com/",
-            'Copyright OpenJS Foundation and other contributors, https://openjsf.org/'+
-            'Permission is hereby granted, free of charge, to any person obtaining'+
-            'a copy of this software and associated documentation files (the'+
-            '"Software"), to deal in the Software without restriction, including'+
-            'without limitation the rights to use, copy, modify, merge, publish,'+
-            'distribute, sublicense, and/or sell copies of the Software, and to'+
-            'permit persons to whom the Software is furnished to do so, subject to'+
-            'the following conditions:'+
-            '<br><br>'+
-            'The above copyright notice and this permission notice shall be'+
-            'included in all copies or substantial portions of the Software.'+
-            '<br><br>'+
-            'THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,'+
-            'EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF'+
-            'MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND'+
-            'NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE'+
-            'LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION'+
-            'OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION'+
-            'WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.'],
-  "jQuery contextMenu": ["https://swisnl.github.io/jQuery-contextMenu/",
-                        'The MIT License'+
-                        '<br><br>'+
-                        'Copyright (c) 2010-2016 SWIS BV'+
-                        '<br><br>'+
-                        'Permission is hereby granted, free of charge, to any person obtaining a copy'+
-                        'of this software and associated documentation files (the "Software"), to deal'+
-                        'in the Software without restriction, including without limitation the rights'+
-                        'to use, copy, modify, merge, publish, distribute, sublicense, and/or sell'+
-                        'copies of the Software, and to permit persons to whom the Software is'+
-                        'furnished to do so, subject to the following conditions:'+
-                        '<br><br>'+
-                        'The above copyright notice and this permission notice shall be included in'+
-                        'all copies or substantial portions of the Software.'+
-                        '<br><br>'+
-                        'THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR'+
-                        'IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,'+
-                        'FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE'+
-                        'AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER'+
-                        'LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,'+
-                        'OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN'+
-                        'THE SOFTWARE.'],
+var licences = {
   "Three.js": ["https://threejs.org/",
               'The MIT License'+
               '<br><br>'+
@@ -401,11 +362,60 @@ var licencesJS = {
             'LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,'+
             'OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE'+
             'SOFTWARE.'],
-
-}
-
-var licencesCSS = {
-  "Roboto": ["https://fonts.google.com/specimen/Roboto", ""],
-  "FontAwesome": ["https://fontawesome.com/", ""],
-  "flag-icon-css": ["https://github.com/lipis/flag-icon-css", ""]
+  "FontAwesome": ["https://fontawesome.com/", 'Font Awesome Free License' +
+                  '<br>-------------------------' +
+                  '<br><br>' +
+                  'Font Awesome Free is free, open source, and GPL friendly. You can use it for' +
+                  'commercial projects, open source projects, or really almost whatever you want.' +
+                  'Full Font Awesome Free license: https://fontawesome.com/license/free.' +
+                  '<br><br>' +
+                  '# Icons: CC BY 4.0 License (https://creativecommons.org/licenses/by/4.0/)' +
+                  'In the Font Awesome Free download, the CC BY 4.0 license applies to all icons' +
+                  'packaged as SVG and JS file types.' +
+                  '<br><br>' +
+                  '# Fonts: SIL OFL 1.1 License (https://scripts.sil.org/OFL)' +
+                  'In the Font Awesome Free download, the SIL OFL license applies to all icons' +
+                  'packaged as web and desktop font files.' +
+                  '<br><br>' +
+                  '# Code: MIT License (https://opensource.org/licenses/MIT)' +
+                  'In the Font Awesome Free download, the MIT license applies to all non-font and' +
+                  'non-icon files.' +
+                  '<br><br>' +
+                  '# Attribution' +
+                  'Attribution is required by MIT, SIL OFL, and CC BY licenses. Downloaded Font' +
+                  'Awesome Free files already contain embedded comments with sufficient' +
+                  'attribution, so you shouldn´t need to do anything additional when using these' +
+                  'files normally.' +
+                  '<br><br>' +
+                  'We´ve kept attribution comments terse, so we ask that you do not actively work' +
+                  'to remove them from files, especially code. They´re a great way for folks to' +
+                  'learn about Font Awesome.' +
+                  '<br><br>' +
+                  '# Brand Icons' +
+                  'All brand icons are trademarks of their respective owners. The use of these' +
+                  'trademarks does not indicate endorsement of the trademark holder by Font' +
+                  'Awesome, nor vice versa. **Please do not use brand logos for any purpose except' +
+                  'to represent the company, product, or service to which they refer.**'],
+  "flag-icon-css": ["https://github.com/lipis/flag-icon-css",
+                  'The MIT License (MIT)' +
+                  '<br><br>' +
+                  'Copyright (c) 2013 Panayiotis Lipiridis' +
+                  '<br><br>' +
+                  'Permission is hereby granted, free of charge, to any person obtaining a copy of' +
+                  'this software and associated documentation files (the "Software"), to deal in' +
+                  'the Software without restriction, including without limitation the rights to' +
+                  'use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies' +
+                  'of the Software, and to permit persons to whom the Software is furnished to do' +
+                  'so, subject to the following conditions:' +
+                  '<br><br>' +
+                  'The above copyright notice and this permission notice shall be included in all' +
+                  'copies or substantial portions of the Software.' +
+                  '<br><br>' +
+                  'THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR' +
+                  'IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,' +
+                  'FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE' +
+                  'AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER' +
+                  'LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,' +
+                  'OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE' +
+                  'SOFTWARE.']
 }
