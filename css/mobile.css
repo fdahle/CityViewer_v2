@@ -1,0 +1,12 @@
+.dropbox_mobile{
+  left: calc(50% - 95px) !important;
+}
+
+.settingsBox_mobile{
+  top: 0px !important;
+  right: 0px !important;
+}
+
+.boxIcon_mobile{
+  margin:0px !important;
+}

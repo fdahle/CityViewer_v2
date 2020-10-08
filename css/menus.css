@@ -1,0 +1,145 @@
+#files{
+  position: absolute;
+  left: 0px;
+  border: 1px solid lightgray;
+  min-width: 210px;
+  width: 210px;
+  resize: horizontal;
+  background-color: white;
+  overflow: auto;
+}
+
+#filesTable{
+  table-layout: fixed;
+}
+
+#objects{
+  position: absolute;
+  left: 0px;
+  border: 1px solid lightgray;
+  min-width: 210px;
+  width: 210px;
+  resize: horizontal;
+  background-color: white;
+  overflow: auto;
+}
+
+#objectsTable{
+  table-layout: fixed;
+}
+
+#objectsTable .td_text{
+  font-size: 11px;
+  line-height: 20px;
+}
+
+#attributes{
+  position: absolute;
+  right: 0px;
+  border: 1px solid lightgray;
+  min-width: 210px;
+  width: 210px;
+  resize: horizontal;
+  background-color: white;
+  display: flex;
+  flex-direction: column;
+}
+
+#attributesTable{
+  table-layout: fixed;
+}
+
+#attributes_warning{
+  color: gray;
+  line-height: 30px;
+  margin: 15px;
+  font-size: smaller;
+}
+
+.menu_caption{
+  line-height: 25px;
+  height: 25px;
+  border-bottom: 1px solid lightgray;
+  font-style: large;
+  padding: 5px;
+  margin-left: 5px;
+  margin-right: 5px;
+}
+
+.menu_content{
+  height: calc(100% - 36px);
+  overflow: auto;
+}
+
+.menu_table{
+  line-height: 30px;
+  width: 100%;
+  font-size: smaller;
+  padding-left: 3px;
+  padding-right: 3px;
+}
+
+.menu_table tr:hover{
+  background-color: #f1f1f1;
+}
+
+.menu_table td{
+  border-bottom: 1px dashed lightgray
+}
+
+.td_toggle{
+  width: 10px;
+}
+
+.td_checkBox{
+  width: 22px;
+}
+
+.td_icon{
+  width: 22px;
+}
+
+.td_text{
+  width: calc(100% - 72px);
+  cursor: pointer;
+  word-break: break-all;
+}
+
+.td_type{
+  width: 32px;
+}
+
+.td_status{
+  width: 20px;
+}
+
+.td_status i{
+  margin: 3px;
+}
+
+.td_key{
+  width: 50%;
+  word-break: break-all;
+  font-size: 11px;
+}
+
+.td_attr{
+  width: 50%;
+  word-break: break-all;
+  font-size: 11px;
+}
+
+.fileType{
+  color: black;
+  font-size: x-small;
+  vertical-align: middle;
+  border: 1px solid gray;
+  padding: 2px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-radius: 15px;
+}
+
+.fileStatus{
+  color: black;
+}
