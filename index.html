@@ -12,6 +12,7 @@
   <link rel="icon" type="image/x-icon" href="public/favicon.ico">
   <link rel="apple-touch-icon" href="public/logo-192x192.png">
 
+  <script src="js/ext/oboe-browser.js"></script>
   <script src="js/ext/three.js"></script>
   <script src="js/ext/OrbitControls.js"></script>
   <script src="js/ext/earcut.js"></script>
@@ -57,9 +58,9 @@
   <div id="files" class="hidden">
     <div class="menu_caption">
       <div id=txt_files></div>
-
-      <i id="filesHideButton" onclick="files_toggleBox()" class="box_i_hide icon-eye-slash"></i>
-
+      <input id="filesSearchField" class="hidden box_input" onkeyup="menuFiles_search()" placeholder="type for search" type="text">
+      <i id="filesHideButton" onclick="menuFiles_toggleMenu()" class="box_i_hide icon-eye-slash"></i>
+      <i id="filesSearchButton" onclick="menuFiles_toggleSearch()" class="box_i_search icon-search"></i>
     </div>
     <div class="menu_content">
       <table id="filesTable" class="menu_table" cellspacing="0">
@@ -70,6 +71,9 @@
   <div id="objects" class="hidden">
     <div class="menu_caption">
       <div id=txt_objects></div>
+      <input id="objectsSearchField" class="hidden box_input" onkeyup="menuObjects_search()" placeholder="type for search" type="text">
+      <i id="objectsHideButton" onclick="menuObjects_toggleMenu()" class="box_i_hide icon-eye-slash"></i>
+      <i id="objectsSearchButton" onclick="menuObjects_toggleSearch()" class="box_i_search icon-search"></i>
     </div>
     <div class="menu_content">
       <table id="objectsTable" class="menu_table" cellspacing="0">
@@ -78,14 +82,17 @@
   </div>
 
   <div id="attributes" class="hidden">
-    <div class="menu_caption">
-      <div id=txt_attributes></div>
+    <div id="attributesLTR">
+      <div class="menu_caption">
+        <div id=txt_attributes></div>
+      </div>
+      <div class="menu_content">
+        <table id="attributesTable" class="menu_table" cellspacing="0">
+        </table>
+      </div>
+      <div id="attr_warning1" class="attributes_warning"><span id="txt_attributes_warning1"></span></div>
+      <div id="attr_warning2" class="attributes_warning"><span id="txt_attributes_warning2"></span></div>
     </div>
-    <div class="menu_content">
-      <table id="attributesTable" class="menu_table" cellspacing="0">
-      </table>
-    </div>
-    <div id="attributes_warning"><span id="txt_attributes_warning"></span></div>
   </div>
 
   <div id="statistics" class="hidden">
@@ -338,15 +345,15 @@
       <table>
         <tr>
           <td><span id="txt_show_edges"></span></td>
-          <td><label class="switch"><input id="inputWireframe" type="checkbox" onclick="toggle_wireframe(this.checked)"><span class="slider round"></span>></td>
+          <td><label class="switch"><input id="inputWireframe" type="checkbox" onclick="toggle_wireframe(this.checked)"><span class="slider round"></span></td>
         </tr>
         <tr>
           <td><span id="txt_show_normals"></span></td>
-          <td><label class="switch"><input id="inputNormals" type="checkbox" onclick="toggle_normals(this.checked)"><span class="slider round"></span>></td>
+          <td><label class="switch"><input id="inputNormals" type="checkbox" onclick="toggle_normals(this.checked)"><span class="slider round"></span></td>
         </tr>
         <tr>
           <td><span id="txt_show_grid"></span></td>
-          <td><label class="switch"><input id="inputGrid" type="checkbox" onclick="toggle_grid(this.checked)"><span class="slider round"></span>></td>
+          <td><label class="switch"><input id="inputGrid" type="checkbox" onclick="toggle_grid(this.checked)"><span class="slider round"></span></td>
         </tr>
       </table>
       <div class="settings_caption"><span id="txt_material_options"></span></div>
@@ -354,7 +361,7 @@
         <tr>
           <td><span id="txt_material_side"></span></td>
           <td>
-            <select onchange="mesh_toggleMaterial(this)">
+            <select id="select_material_side" onchange="mesh_toggleMaterial(this)">
               <option id="txt_front_side" value="front"></option>
               <option id="txt_back_side" value="back"></option>
               <option id="txt_double_side" value="double"></option>
@@ -368,13 +375,17 @@
         <tr>
           <td><span id="txt_object_selection"></span></td>
           <td>
-            <select onchange="toggleSelect(this)">
+            <select id="select_click" onchange="settings_toggleSelect(this)">
               <option id="txt_left_click" value="left"></option>
               <option id="txt_double_left_click" value="double_left"></option>
               <option id="txt_middle_click" value="middle"></option>
               <option id="txt_right_click" value="right"></option>
             </select>
           </td>
+        </tr>
+        <tr>
+          <td><span id="txt_object_selection_number"></span></td>
+          <td><label class="switch"><input id="inputSelectionNumber" type="checkbox" onclick="settings_change_setting('objectSelectionNumber', this.checked)"><span class="slider round"></span>></td>
         </tr>
       </table>
     </div>

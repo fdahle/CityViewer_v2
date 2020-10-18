@@ -4,9 +4,16 @@
   border: 1px solid lightgray;
   min-width: 210px;
   width: 210px;
+  max-width: 40%;
   resize: horizontal;
   background-color: white;
   overflow: auto;
+}
+
+.filesSmall{
+  width: 30px !important;
+  min-width: 30px !important;
+  resize: none !important;
 }
 
 #filesTable{
@@ -19,9 +26,16 @@
   border: 1px solid lightgray;
   min-width: 210px;
   width: 210px;
+  max-width: 40%;
   resize: horizontal;
   background-color: white;
   overflow: auto;
+}
+
+.objectsSmall{
+  width: 30px !important;
+  min-width: 30px !important;
+  resize: none !important;
 }
 
 #objectsTable{
@@ -39,17 +53,29 @@
   border: 1px solid lightgray;
   min-width: 210px;
   width: 210px;
+  max-width: 40%;
   resize: horizontal;
   background-color: white;
   display: flex;
   flex-direction: column;
+  direction: rtl;
+  overflow: auto;
+}
+
+#attributesLTR{
+  direction: ltr;
+  height: 100%;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  max-height: inherit;
 }
 
 #attributesTable{
   table-layout: fixed;
 }
 
-#attributes_warning{
+.attributes_warning{
   color: gray;
   line-height: 30px;
   margin: 15px;
@@ -60,15 +86,72 @@
   line-height: 25px;
   height: 25px;
   border-bottom: 1px solid lightgray;
-  font-style: large;
   padding: 5px;
   margin-left: 5px;
   margin-right: 5px;
 }
 
+.menu_caption_large{
+  height: 50px !important;
+}
+
+.menu_caption_hidden{
+  height: 25px !important;
+}
+
+.txt_caption_rotated{
+  transform: rotate(-90deg);
+  transform-origin: left bottom;
+  text-align: center;
+  position: absolute;
+  color: gray;
+  height: 30px;
+  left: 30px;
+  margin-top: 85px;
+}
+
+.box_input{
+  width: 100%;
+  left: 0px;
+  border: none;
+  padding-right: 8px;
+  color: #797878;
+}
+
+.box_input:focus{
+  outline: none;
+}
+
+.box_i_search{
+  float: right;
+  margin-top: -20px;
+  margin-right: 20px;
+  cursor: pointer;
+}
+
+.box_i_hide {
+  float: right;
+  margin-top: -20px;
+  margin-right: -5px;
+  cursor: pointer;
+}
+
+.box_i_hide_hidden{
+  margin-top: 5px !important;
+  margin-right: -3px;
+}
+
+.box_largeCaption{
+  margin-top: -45px;
+}
+
 .menu_content{
   height: calc(100% - 36px);
   overflow: auto;
+}
+
+.menu_content_small{
+  height: calc(100% - 61px);
 }
 
 .menu_table{
@@ -85,6 +168,21 @@
 
 .menu_table td{
   border-bottom: 1px dashed lightgray
+}
+
+.td_disabled{
+  color: gray !important;
+  cursor: default !important;
+}
+
+.td_input{
+  width: calc(100% - 10px);
+  border: none;
+  background: transparent;
+}
+
+.td_input:focus{
+  border: none;
 }
 
 .td_toggle{

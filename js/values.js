@@ -34,7 +34,9 @@ var jsonAttributes = {}; //all attributes of the jsonFile; key = jsonId
 var clickedFileIds = {};
 var contextFileId = null; //marks the file that was selected with an rightclick for context menu
 var centeredFileId = null; //marks the file that is centered
-var clickedObjId = null;
+
+var clickedObjIds = {};
+var markedObjIds = {};
 
 var logger_oldText = null;
 
@@ -53,6 +55,7 @@ var globalSettings = {
   "settings_verifyJSON": false,
   "settings_beautifyJSON": false,
   "settings_askDelete": true,
+  "settings_objectSelection": "single",
   "viewer_axis": true,
   "viewer_edges": false,
   "viewer_normals": false,
@@ -90,17 +93,19 @@ var allColours = {
   "WaterBody": 0x4da6ff
 };
 
+var langDict = null;
+
 //english Language
 var lang_en = {
   txt_dropper1: "Drop your files here",
   txt_dropper2: "or click to open",
+  txt_noObj_notValid: "' is not a valid file type",
+  txt_noObj_jsonError: ".json has an error and cannot be loaded.",
   txt_files: "Files",
-  txt_files_rota: "Files",
   txt_objects: "Objects",
-  txt_objects_rota: "Objects",
   txt_attributes: "Attributes",
-  txt_attributes_rota: "Attributes",
-  txt_attributes_warning: "No attributes available",
+  txt_attributes_warning1: "No attributes available",
+  txt_attributes_warning2: "Too many objects selected",
   txt_btn_help: "Help",
   txt_btn_settings: "Settings",
   txt_settings_caption: "Settings",
@@ -135,6 +140,7 @@ var lang_en = {
   txt_intelligent_side: "Intelligent",
   txt_select_options: "Select options",
   txt_object_selection: "Object selection",
+  txt_object_selection_number: "Multiple selection of objects",
   txt_left_click: "Left click",
   txt_double_left_click: "Double left click",
   txt_middle_click: "Middle click",
@@ -195,16 +201,16 @@ var lang_en = {
   txt_help_todo4: "Many options can be changed in the settings.",
   txt_help_todo5: "This app can also be used offline.",
   txt_help3: "Click <span class='link' onclick='help_load_example()'>here</span> to load a simple CityJSON-Example.",
-  txt_context_goto: "Go to",
-  txt_context_rename: "Rename",
-  txt_context_duplicate: "Duplicate",
-  txt_context_download: "Download",
-  txt_context_delete: "Delete",
-  txt_context_overview: "Overview",
-  txt_context_metadata: "Metadata",
-  txt_context_statistics: "Statistics",
-  txt_context_settings: "Settings",
-  txt_context_quit: "Quit",
+  txt_noObj_context_goto: "Go to",
+  txt_noObj_context_rename: "Rename",
+  txt_noObj_context_duplicate: "Duplicate",
+  txt_noObj_context_download: "Download",
+  txt_noObj_context_delete: "Delete",
+  txt_noObj_context_overview: "Overview",
+  txt_noObj_context_metadata: "Metadata",
+  txt_noObj_context_statistics: "Statistics",
+  txt_noObj_context_settings: "Settings",
+  txt_noObj_context_quit: "Quit",
   txt_overview_caption: "Overview",
 };
 
@@ -212,13 +218,13 @@ var lang_en = {
 var lang_de = {
   txt_dropper1: "Dateien hier ablegen",
   txt_dropper2: "oder für Öffnen klicken",
+  txt_noObj_notValid: "' ist kein gültiges Dateiformat.",
+  txt_noObj_jsonError: ".json hat einen Fehler und kann nich geladen werden.",
   txt_files: "Dateien",
-  txt_files_rota: "Dateien",
   txt_objects: "Objekte",
-  txt_objects_rota: "Objekte",
   txt_attributes: "Attribute",
-  txt_attributes_rota: "Attribute",
-  txt_attributes_warning: "Keine Attribute vorhanden",
+  txt_attributes_warning1: "Keine Attribute vorhanden",
+  txt_attributes_warning2: "Zu viele Objekte ausgewählt",
   txt_btn_help: "Hilfe",
   txt_btn_settings: "Einstellungen",
   txt_settings_caption: "Einstellungen",
@@ -253,6 +259,7 @@ var lang_de = {
   txt_intelligent_side: "Intelligent",
   txt_select_options: "Auswahl-Optionen",
   txt_object_selection: "Objektauswahl",
+  txt_object_selection_number: "Mehrere Objekte auswählen",
   txt_left_click: "Linksklick",
   txt_double_left_click: "Doppel-Linksklick",
   txt_middle_click: "Mittelklick",
@@ -313,16 +320,16 @@ var lang_de = {
   txt_help_todo4: "Viele Optionen können in den Einstellungen verändert werden.",
   txt_help_todo5: "Diese App kann auch offline genutzt werden.",
   txt_help3: "<span class='link' onclick='help_load_example()'>Hier</span> klicken um ein einfaches CityJSON Beispiel zu laden.",
-  txt_context_goto: "Fokussieren",
-  txt_context_rename: "Umbenennen",
-  txt_context_duplicate: "Duplizieren",
-  txt_context_download: "Download",
-  txt_context_delete: "Löschen",
-  txt_context_overview: "Übersicht",
-  txt_context_metadata: "Metadaten",
-  txt_context_statistics: "Statistiken",
-  txt_context_settings: "Einstellungen",
-  txt_context_quit: "Verlassen",
+  txt_noObj_context_goto: "Fokussieren",
+  txt_noObj_context_rename: "Umbenennen",
+  txt_noObj_context_duplicate: "Duplizieren",
+  txt_noObj_context_download: "Download",
+  txt_noObj_context_delete: "Löschen",
+  txt_noObj_context_overview: "Übersicht",
+  txt_noObj_context_metadata: "Metadaten",
+  txt_noObj_context_statistics: "Statistiken",
+  txt_noObj_context_settings: "Einstellungen",
+  txt_noObj_context_quit: "Verlassen",
   txt_overview_caption: "Übersicht"
 };
 

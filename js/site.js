@@ -107,14 +107,6 @@ function file_delete_file(fileId){
   var fileId = contextFileId;
   contextFileId = null;
 
-  var lang = localStorage.getItem("settings_language");
-  var langDict = null;
-  if (lang == "en") {
-    langDict = lang_en;
-  } else if (lang == "de") {
-    langDict = lang_de;
-  }
-
   var fileName = fileIdDict[fileId];
   if (localStorage.getItem("settings_askDelete") == "true") {
     if (confirm(langDict["txt_ask_del1"] + fileName + langDict["txt_ask_del2"]) == false) {
@@ -172,6 +164,15 @@ function file_delete_file(fileId){
 
 }
 
+function file_disable_file(fileId){
+  var tr = document.getElementById("filesTable").querySelectorAll('[fileId="' + fileId + '"]')[0];
+
+  tr.children[0].children[0].disabled = true;
+  tr.children[1].classList.add("td_disabled");
+  tr.children[2].classList.add("td_disabled");
+
+}
+
 function file_download_file(){
 
   var fileId = contextFileId;
@@ -222,6 +223,39 @@ function file_duplicate_file(){
   var fileId = contextFileId;
   contextFileId = null;
 
+  var newFileId = id_create_UUID();
+
+  //with json parse/stringify you make a deep copy
+  fileIdDict[newFileId] = JSON.parse(JSON.stringify(fileIdDict[fileId]));
+  fileStats[newFileId] = JSON.parse(JSON.stringify(fileStats[fileId]));
+
+  var fileName = fileIdDict[newFileId];
+  var fileType = fileStats[newFileId]["type"];
+
+  //add to the files menu
+  menuFiles_addFileToMenu(newFileId, fileName, fileType)
+  file_handle_selection(newFileId);
+
+  logger_write_to_log("start copying of '" + fileName + "'");
+
+
+  if (fileStats[newFileId]["type"] == "CityJSON"){
+    jsonVertices[newFileId] = JSON.parse(JSON.stringify(jsonVertices[fileId]));
+    jsonAttributes[newFileId] = JSON.parse(JSON.stringify(jsonAttributes[fileId]));
+    jsonObjects[newFileId] = JSON.parse(JSON.stringify(jsonObjects[fileId]));
+
+    objIdDict[newFileId] = {}
+
+    clone_objects(fileId, newFileId);
+
+    for (var key in objIdDict[fileId]){
+      var newObjId = id_create_UUID();
+      objIdDict[newFileId][newObjId] = JSON.parse(JSON.stringify(objIdDict[fileId][key]));
+      change_cloned_object_attributes(newFileId, newObjId, key)
+    }
+  }
+
+  render();
 }
 
 function file_extractName(file) {
@@ -280,6 +314,26 @@ function file_handle_selection(fileId){
 
 }
 
+function file_parseJSON_test(file, fileId, fileName) {
+
+  var blob_url = URL.createObjectURL(file);
+  console.log(blob_url);
+
+  oboe(blob_url)
+     .done(function(json) {
+
+       console.log(json.vertices);
+       console.log("DONE");
+        // we got it
+     })
+     .fail(function() {
+
+       console.log("FAIL");
+        // we don't got it
+     });
+
+}
+
 function file_parseJSON(file, fileId, fileName) {
 
   var fr = new FileReader();
@@ -287,12 +341,14 @@ function file_parseJSON(file, fileId, fileName) {
   fr.addEventListener("load", async e => {
     try {
       json = JSON.parse(fr.result);
-    } catch {
-      window.alert("'" + fileName + ".json' has an error and cannot be loaded.");
-    }
+      logger_write_to_log("reading of '" + fileName + "' finished")
+      file_storeJSON(json, fileId);
 
-    logger_write_to_log("reading of '" + fileName + "' finished")
-    file_storeJSON(json, fileId);
+    } catch {
+      logger_write_to_log("reading of '" + fileName + "' failed")
+      window.alert("'" + fileName + langDict["txt_noObj_jsonError"]);
+      file_disable_file(fileId);
+    }
 
   });
 
@@ -300,6 +356,48 @@ function file_parseJSON(file, fileId, fileName) {
 }
 
 function file_rename_file(){
+  var fileId = contextFileId;
+  contextFileId = null;
+
+  var tr = document.getElementById("filesTable").querySelectorAll('[fileId="' + fileId + '"]')[0];
+
+  //hide span
+  tr.children[1].children[0].classList.add("hidden");
+
+  //add input
+  var input = document.createElement("input");
+  input.type="text";
+  input.setAttribute("fileId", fileId)
+  input.value = tr.children[1].children[0].innerHTML;
+  input.classList.add("td_input")
+  input.onkeydown = function(){
+    this.style.background = "transparent";
+  }
+  input.onkeyup = function(){
+    if (event.keyCode === 13){
+      this.blur();
+    } //catch enter
+  }
+  input.onblur = function(){
+    if (this.value.length == 0){
+      this.style.background = "#ff8e8e";
+      this.focus();
+    } else {
+      var fileId = this.getAttribute("fileId");
+      var tr = document.getElementById("filesTable").querySelectorAll('[fileId="' + fileId + '"]')[0];
+      tr.children[1].children[0].innerHTML = this.value;
+      fileIdDict[fileId] = this.value;
+      tr.children[1].children[0].classList.remove("hidden");
+      this.remove();
+
+    };
+  }
+
+  tr.children[1].append(input);
+  input.focus();
+
+
+
 
 }
 
@@ -568,18 +666,18 @@ function files_handleFiles(files) {
     fileStats[fileId]["type"] = fileType;
     fileStats[fileId]["size"] = fileSize;
 
-    //add to the files menu
-    menuFiles_addFileToMenu(fileId, fileName, fileType)
-
-    file_handle_selection(fileId);
-
-    logger_write_to_log("start loading of '" + fileName + "'");
-
     //read content
     if (fileType == "json") {
+      //add to the files menu
+      menuFiles_addFileToMenu(fileId, fileName, fileType)
+
+      file_handle_selection(fileId);
+
+      logger_write_to_log("start loading of '" + fileName + "'");
+
       file_parseJSON(files[i], fileId, fileName)
     } else {
-      window.alert("'" + fileName + "." + fileType + "' is not a valid file type.");
+      window.alert("'" + fileName + "." + fileType + langDict["txt_noObj_notValid"]);
       continue
     }
 
@@ -589,30 +687,6 @@ function files_handleFiles(files) {
   }
 
 }
-
-/*
-function files_parseJSON(file, fileId){
-  var CHUNK_SIZE = 1024;
-  var offset = 0;
-
-  var fileName = fileIdDict[fileId];
-  var fileSize = fileStats[fileId + "_size"];
-
-
-  while (offset < fileSize){
-    console.log(offset, fileSize);
-    var fr = new FileReader();
-    fr.onload = function(){
-      var arrayBuffer = fr.result;
-      console.log(arrayBuffer);
-    }
-    var slice = file.slice(offset, offset + CHUNK_SIZE);
-    fr.readAsText(slice);
-    offset = offset + CHUNK_SIZE;
-  }
-
-}
-*/
 
 function files_resetFileLoader() {
   document.getElementById("fileElem").value = "";
@@ -783,11 +857,12 @@ function logger_write_to_log(text, value=null){
 
 }
 
-function menuAttributes_fill_menu(fileId, objId){
+function menuAttributes_fill_menu(fileId, objId, multiWarning=false){
 
 
   document.getElementById("attributes").classList.remove("hidden");
-  document.getElementById("attributes_warning").classList.add("hidden");
+  document.getElementById("attr_warning1").classList.add("hidden");
+  document.getElementById("attr_warning2").classList.add("hidden");
 
   var objName = objIdDict[fileId][objId];
   var obj = jsonObjects[fileId][objName];
@@ -795,6 +870,11 @@ function menuAttributes_fill_menu(fileId, objId){
   var table = document.getElementById("attributesTable");
 
   table.innerHTML = "";
+
+  if (multiWarning){
+    document.getElementById("attr_warning2").classList.remove("hidden");
+    return
+  }
   table.setAttribute("fileId", fileId);
   table.setAttribute("objId", objId);
 
@@ -887,6 +967,86 @@ function menuFiles_addFileToMenu(fileId, fileName, fileType) {
 
   table.append(tr)
 
+}
+
+function menuFiles_search(){
+
+  var searchText = document.getElementById("filesSearchField").value;
+
+  if (searchText.length > 0){
+    document.getElementById("filesSearchButton").classList.remove("icon-search");
+    document.getElementById("filesSearchButton").classList.add("icon-search-plus");
+  } else {
+    document.getElementById("filesSearchButton").classList.remove("icon-search-plus");
+    document.getElementById("filesSearchButton").classList.add("icon-search");
+  }
+
+  //iterate all table elements
+  for (var i = 0, row; row = document.getElementById("filesTable").rows[i]; i++) {
+    if (searchText.length == 0 || row.children[1].children[0].innerHTML.includes(searchText)){
+      row.classList.remove("hidden");
+    } else {
+      row.classList.add("hidden");
+    }
+  }
+
+}
+
+function menuFiles_toggleMenu(){
+  if (document.getElementById("filesHideButton").classList.contains("icon-eye-slash")){
+    document.getElementById("filesHideButton").classList.remove("icon-eye-slash");
+    document.getElementById("filesHideButton").classList.add("icon-eye");
+    document.getElementById("filesHideButton").classList.add("box_i_hide_hidden")
+
+    document.getElementById("files").children[0].classList.add("menu_caption_hidden");
+
+    document.getElementById("files").classList.add("filesSmall");
+    document.getElementById("txt_files").classList.add("txt_caption_rotated");
+
+    document.getElementById("files").children[1].classList.add("hidden");
+    document.getElementById("filesSearchField").classList.add("hidden");
+
+  } else {
+    document.getElementById("filesHideButton").classList.remove("icon-eye");
+    document.getElementById("filesHideButton").classList.add("icon-eye-slash");
+    document.getElementById("filesHideButton").classList.remove("box_i_hide_hidden")
+
+    document.getElementById("files").children[0].classList.remove("menu_caption_hidden");
+
+    document.getElementById("files").classList.remove("filesSmall");
+    document.getElementById("txt_files").classList.remove("txt_caption_rotated");
+
+    document.getElementById("files").children[1].classList.remove("hidden");
+
+    if (document.getElementById("filesSearchField").getAttribute("visible") == "true"){
+      document.getElementById("filesSearchField").classList.remove("hidden");
+    }
+  }
+}
+
+function menuFiles_toggleSearch(){
+
+  //show searchField
+  if (document.getElementById("filesSearchField").classList.contains("hidden")){
+    document.getElementById("filesSearchField").classList.remove("hidden");
+    document.getElementById("filesSearchField").setAttribute("visible", true);
+    document.getElementById("filesSearchField").focus();
+
+    document.getElementById("files").children[0].classList.add("menu_caption_large");
+    document.getElementById("files").children[1].classList.add("menu_content_small");
+
+    document.getElementById("filesHideButton").classList.add("box_largeCaption");
+    document.getElementById("filesSearchButton").classList.add("box_largeCaption");
+  } else {
+    document.getElementById("filesSearchField").classList.add("hidden");
+    document.getElementById("filesSearchField").removeAttribute("visible");
+
+    document.getElementById("files").children[0].classList.remove("menu_caption_large");
+    document.getElementById("files").children[1].classList.remove("menu_content_small");
+
+    document.getElementById("filesHideButton").classList.remove("box_largeCaption");
+    document.getElementById("filesSearchButton").classList.remove("box_largeCaption");
+  }
 }
 
 function menuObjects_addObjectToMenu(fileId, objId, objName, obj, parent=undefined) {
@@ -982,6 +1142,18 @@ function menuObjects_addObjectToMenu(fileId, objId, objName, obj, parent=undefin
   return true
 }
 
+function menuObjects_changeIconColour(type){
+  var table = document.getElementById("objectsTable");
+  var color = localStorage.getItem("colour_" + type).replace("0x", "#");
+
+  for (var i = 0, row; row = table.rows[i]; i++) {
+    if (row.getAttribute("objType") == type){
+      row.children[2].children[0].style.color=color;
+    }
+  }
+
+}
+
 function menuObjects_getParent(fileId, objName){
 
   var trs = document.getElementById("objectsTable").querySelectorAll('[fileId="' + fileId + '"]');
@@ -993,6 +1165,29 @@ function menuObjects_getParent(fileId, objName){
   }
 
   return null
+}
+
+function menuObjects_search(){
+
+  var searchText = document.getElementById("objectsSearchField").value;
+
+  if (searchText.length > 0){
+    document.getElementById("filesSearchButton").classList.remove("icon-search");
+    document.getElementById("filesSearchButton").classList.add("icon-search-plus");
+  } else {
+    document.getElementById("filesSearchButton").classList.remove("icon-search-plus");
+    document.getElementById("filesSearchButton").classList.add("icon-search");
+  }
+
+  //iterate all table elements
+  for (var i = 0, row; row = document.getElementById("objectsTable").rows[i]; i++) {
+    if (searchText.length == 0 || row.children[3].children[0].innerHTML.includes(searchText)){
+      row.classList.remove("hidden");
+    } else {
+      row.classList.add("hidden");
+    }
+  }
+
 }
 
 function menuObjects_selectIcon(objType){
@@ -1030,6 +1225,38 @@ function menuObjects_selectIcon(objType){
   return [icon, colour]
 }
 
+function menuObjects_toggleMenu(){
+  if (document.getElementById("objectsHideButton").classList.contains("icon-eye-slash")){
+    document.getElementById("objectsHideButton").classList.remove("icon-eye-slash");
+    document.getElementById("objectsHideButton").classList.add("icon-eye");
+    document.getElementById("objectsHideButton").classList.add("box_i_hide_hidden")
+
+    document.getElementById("objects").children[0].classList.add("menu_caption_hidden");
+
+    document.getElementById("objects").classList.add("objectsSmall");
+    document.getElementById("txt_objects").classList.add("txt_caption_rotated");
+
+    document.getElementById("objects").children[1].classList.add("hidden");
+    document.getElementById("objectsSearchField").classList.add("hidden");
+
+  } else {
+    document.getElementById("objectsHideButton").classList.remove("icon-eye");
+    document.getElementById("objectsHideButton").classList.add("icon-eye-slash");
+    document.getElementById("objectsHideButton").classList.remove("box_i_hide_hidden")
+
+    document.getElementById("objects").children[0].classList.remove("menu_caption_hidden");
+
+    document.getElementById("objects").classList.remove("objectsSmall");
+    document.getElementById("txt_objects").classList.remove("txt_caption_rotated");
+
+    document.getElementById("objects").children[1].classList.remove("hidden");
+
+    if (document.getElementById("objectsSearchField").getAttribute("visible") == "true"){
+      document.getElementById("objectsSearchField").classList.remove("hidden");
+    }
+  }
+}
+
 function menuObjects_toggleRows(objId){
   var tr = document.getElementById("tr_" + objId);
   var level = tr.getAttribute("level");
@@ -1053,10 +1280,35 @@ function menuObjects_toggleRows(objId){
 
     tr = tr.nextElementSibling;
 
-    while (tr.getAttribute("level") > level){
+    while (tr != null && tr.getAttribute("level") > level){
       tr.classList.remove("hidden");
       tr = tr.nextElementSibling;
     }
+  }
+}
+
+function menuObjects_toggleSearch(){
+
+  //show searchField
+  if (document.getElementById("objectsSearchField").classList.contains("hidden")){
+    document.getElementById("objectsSearchField").classList.remove("hidden");
+    document.getElementById("objectsSearchField").setAttribute("visible", true);
+    document.getElementById("objectsSearchField").focus();
+
+    document.getElementById("objects").children[0].classList.add("menu_caption_large");
+    document.getElementById("objects").children[1].classList.add("menu_content_small");
+
+    document.getElementById("objectsHideButton").classList.add("box_largeCaption");
+    document.getElementById("objectsSearchButton").classList.add("box_largeCaption");
+  } else {
+    document.getElementById("objectsSearchField").classList.add("hidden");
+    document.getElementById("objectsSearchField").removeAttribute("visible");
+
+    document.getElementById("objects").children[0].classList.remove("menu_caption_large");
+    document.getElementById("objects").children[1].classList.remove("menu_content_small");
+
+    document.getElementById("objectsHideButton").classList.remove("box_largeCaption");
+    document.getElementById("objectsSearchButton").classList.remove("box_largeCaption");
   }
 }
 
@@ -1083,62 +1335,153 @@ function mobile_checkBrowserType() {
 
 function object_handle_selection(fileId, objId){
 
-  //reset old obj
-  if (clickedObjId != null){
-    var oldTr = document.getElementById("objectsTable").querySelectorAll('[objId="' + clickedObjId + '"]')[0];
-    oldTr.children[3].style.color = "black";
-    for (var ids of markedObjIds){
-      mesh_toggleHighlight(ids);
-    }
-    markedObjIds = [];
-  }
+  if (localStorage.getItem("settings_objectSelection") == "single"){
 
-  var objTr = document.getElementById("tr_" + objId);
-  var fileTr = document.getElementById("filesTable").querySelectorAll('[fileId="' + fileId + '"]')[0];
+    for (var key in clickedObjIds){
+      var objTr = document.getElementById("objectsTable").querySelectorAll('[objId="' + key + '"]')[0];
+      objTr.children[3].style.color = "black";
+      delete clickedObjIds[key];
 
-  //make tr row visible
-  if (objTr.classList.contains("hidden")){
-    var tr = objTr;
-
-    while (tr.getAttribute("level") > 0){
-      tr = tr.previousSibling;
+      if (markedObjIds[key] != ""){
+        for (var childKey of markedObjIds[key]){
+          mesh_toggleHighlight(childKey);
+        }
+      } else {
+        mesh_toggleHighlight(key);
+      }
+      delete markedObjIds[key];
     }
 
-    var parentId = tr.getAttribute("objId");
-    menuObjects_toggleRows(parentId);
-  }
+    var objTr = document.getElementById("objectsTable").querySelectorAll('[objId="' + objId + '"]')[0];
+    var fileTr = document.getElementById("filesTable").querySelectorAll('[fileId="' + fileId + '"]')[0];
 
-  objTr.children[3].style.color = "cornflowerblue";
-  if (fileId in clickedFileIds == false){
-    file_handle_selection(fileId);
-  }
+    objTr.children[3].style.color = "cornflowerblue";
 
-  fileTr.scrollIntoViewIfNeeded();
-  objTr.scrollIntoViewIfNeeded();
+    //make tr row visible
+    if (objTr.classList.contains("hidden")){
+      var tr = objTr;
 
-  //this happens when a parent is clicked that has no meshes
-  if (document.getElementById("tr_" + objId).getAttribute("hasChildren") == "true"){
-    var tr = document.getElementById("tr_" + objId);
-    var trLevel = parseInt(tr.getAttribute("level"));
+      while (tr != null && tr.getAttribute("level") > 0){
+        tr = tr.previousSibling;
+      }
 
-    tr = tr.nextElementSibling;
+      var parentId = tr.getAttribute("objId");
+      menuObjects_toggleRows(parentId);
+    }
 
-    //get next row until level is equal or higher
-    while (tr.getAttribute("level") > trLevel){
-      mesh_toggleHighlight(tr.getAttribute("objId"));
-      markedObjIds.push(tr.getAttribute("objId"));
+    //scroll to file if needed
+    fileTr.scrollIntoViewIfNeeded();
+    objTr.scrollIntoViewIfNeeded();
+
+    //select file if not selected
+    if (fileId in clickedFileIds == false){
+      file_handle_selection(fileId);
+    }
+
+    //this happens when a parent is clicked that has no meshes
+    if (document.getElementById("tr_" + objId).getAttribute("hasChildren") == "true"){
+      var tr = document.getElementById("tr_" + objId);
+      var trLevel = parseInt(tr.getAttribute("level"));
+
       tr = tr.nextElementSibling;
+
+      var markedChildren = []
+
+      //get next row until level is equal or higher
+      while (tr != null && tr.getAttribute("level") > trLevel){
+        mesh_toggleHighlight(tr.getAttribute("objId"));
+        markedChildren.push(tr.getAttribute("objId"));
+        tr = tr.nextElementSibling;
+      }
+      markedObjIds[objId] = markedChildren;
+
+    } else {
+      mesh_toggleHighlight(objId);
+      markedObjIds[objId] ="";
     }
 
-  } else {
-    mesh_toggleHighlight(objId);
-    markedObjIds.push(objId);
+    clickedObjIds[objId] = "";
+    menuAttributes_fill_menu(fileId, objId);
+
+  } else if (localStorage.getItem("settings_objectSelection") == "multi"){
+
+    var objTr = document.getElementById("objectsTable").querySelectorAll('[objId="' + objId + '"]')[0];
+    var fileTr = document.getElementById("filesTable").querySelectorAll('[fileId="' + fileId + '"]')[0];
+
+    if (objId in clickedObjIds){
+      delete clickedObjIds[objId];
+      objTr.children[3].style.color = "black";
+
+      if (objId in markedObjIds){
+        if (markedObjIds[objId] != ""){
+          for (var childKey of markedObjIds[objId]){
+            mesh_toggleHighlight(childKey);
+          }
+        } else {
+          mesh_toggleHighlight(objId);
+        }
+        delete markedObjIds[objId];
+      }
+
+    } else {
+      clickedObjIds[objId] = ""
+      objTr.children[3].style.color = "cornflowerblue";
+
+      //make tr row visible
+      if (objTr.classList.contains("hidden")){
+        var tr = objTr;
+
+        while (tr.getAttribute("level") > 0){
+          tr = tr.previousSibling;
+        }
+
+        var parentId = tr.getAttribute("objId");
+        menuObjects_toggleRows(parentId);
+      }
+
+      //scroll to file if needed
+      fileTr.scrollIntoViewIfNeeded();
+      objTr.scrollIntoViewIfNeeded();
+
+      //select file if not selected
+      if (fileId in clickedFileIds == false){
+        file_handle_selection(fileId);
+      }
+
+      //this happens when a parent is clicked that has no meshes
+      if (document.getElementById("tr_" + objId).getAttribute("hasChildren") == "true"){
+        var tr = document.getElementById("tr_" + objId);
+        var trLevel = parseInt(tr.getAttribute("level"));
+
+        tr = tr.nextElementSibling;
+
+        var markedChildren = []
+
+        //get next row until level is equal or higher
+        while (tr != null && tr.getAttribute("level") > trLevel){
+          mesh_toggleHighlight(tr.getAttribute("objId"));
+          markedChildren.push(tr.getAttribute("objId"));
+          tr = tr.nextElementSibling;
+        }
+        markedObjIds[objId] = markedChildren;
+
+      } else {
+        mesh_toggleHighlight(objId);
+        markedObjIds[objId] ="";
+      }
+
+    }
+
+    if (Object.keys(clickedObjIds).length == 0){
+      document.getElementById("attributes").classList.add("hidden");
+    } else if (Object.keys(clickedObjIds).length == 1){
+      var objId = Object.keys(clickedObjIds)[0];
+      var fileId = document.getElementById("tr_" + objId).getAttribute("fileId");
+      menuAttributes_fill_menu(fileId, objId);
+    } else {
+      menuAttributes_fill_menu(fileId, objId, true);
+    }
   }
-
-  clickedObjId = objId;
-
-  menuAttributes_fill_menu(fileId, objId);
-
 }
 
 //add or remove the click event from the overlay div for smoother feelings
@@ -1181,19 +1524,11 @@ function overlay_toggle_overlay(bool){
 
 function page_build_contextMenu(){
 
-    var lang = localStorage.getItem("settings_language");
-    var langDict = null;
-    if (lang == "en") {
-      langDict = lang_en;
-    } else if (lang == "de") {
-      langDict = lang_de;
-    }
-
     contextMenuFiles = [
       //go to
       {
         type: 'item',
-        title: langDict["txt_context_goto"],
+        title: langDict["txt_noObj_context_goto"],
         icon: 'icon-crosshairs',
         fn: function() {
           file_set_camera()
@@ -1205,7 +1540,7 @@ function page_build_contextMenu(){
       //rename
       {
         type: 'item',
-        title: langDict["txt_context_rename"],
+        title: langDict["txt_noObj_context_rename"],
         icon: 'icon-edit',
         fn: function() {
           file_rename_file()
@@ -1214,7 +1549,7 @@ function page_build_contextMenu(){
       //duplicate
       {
         type: 'item',
-        title: langDict["txt_context_duplicate"],
+        title: langDict["txt_noObj_context_duplicate"],
         icon: 'icon-copy',
         fn: function() {
           file_duplicate_file()
@@ -1223,7 +1558,7 @@ function page_build_contextMenu(){
       //download
       {
         type: 'item',
-        title: langDict["txt_context_download"],
+        title: langDict["txt_noObj_context_download"],
         icon: 'icon-download',
         fn: function() {
           file_download_file()
@@ -1232,7 +1567,7 @@ function page_build_contextMenu(){
       //delete
       {
         type: 'item',
-        title: langDict["txt_context_delete"],
+        title: langDict["txt_noObj_context_delete"],
         icon: 'icon-trash-o',
         fn: function() {
           file_delete_file()
@@ -1244,7 +1579,7 @@ function page_build_contextMenu(){
       //overview
       {
         type: 'item',
-        title: langDict["txt_context_overview"],
+        title: langDict["txt_noObj_context_overview"],
         icon: 'icon-table',
         fn: function() {
           overview_toggle_overview()
@@ -1253,7 +1588,7 @@ function page_build_contextMenu(){
       //metadata
       {
         type: 'item',
-        title: langDict["txt_context_metadata"],
+        title: langDict["txt_noObj_context_metadata"],
         icon: 'icon-globe',
         fn: function() {
           file_toggle_metadata()
@@ -1262,21 +1597,21 @@ function page_build_contextMenu(){
       //statistics
       {
         type: 'item',
-        title: langDict["txt_context_statistics"],
+        title: langDict["txt_noObj_context_statistics"],
         icon: 'icon-info-circle',
         fn: function() {
           file_toggle_statistics()
         }
       },
       //settings
-      //{ type: 'item', title: langDict["txt_context_settings"], icon: 'fas fa-cog', fn: function() {}},
+      //{ type: 'item', title: langDict["txt_noObj_context_settings"], icon: 'fas fa-cog', fn: function() {}},
       {
         type: 'separator'
       },
       //quit
       {
         type: 'item',
-        title: langDict["txt_context_quit"],
+        title: langDict["txt_noObj_context_quit"],
         icon: 'icon-times',
         fn: function() {}
       }
@@ -1312,6 +1647,12 @@ function page_init_settings(){
     document.getElementById("inputSearchStyle").checked = true;
   } else {
     document.getElementById("inputSearchStyle").checked = false;
+  }
+
+  if (localStorage.getItem("settings_objectSelection") == "single"){
+    document.getElementById("inputSelectionNumber").checked = false;
+  } else {
+    document.getElementById("inputSelectionNumber").checked = true;
   }
 
   if (localStorage.getItem("settings_verifyJSON") == "true"){
@@ -1350,6 +1691,11 @@ function page_init_settings(){
     document.getElementById("inputGrid").checked = false;
   }
 
+  var materialSide = localStorage.getItem("viewer_materialSide");
+  document.getElementById("select_material_side").value = materialSide;
+
+  var selectType = localStorage.getItem("viewer_select");
+  document.getElementById("select_click").value = selectType;
 
   //colour viewer settings
   var table = document.getElementById("table_viewer_colour");
@@ -1396,7 +1742,7 @@ function page_set_language(lang) {
   document.getElementById("html").setAttribute("lang", lang);
 
   //check which dict must be taken which english as backup
-  var langDict = null
+  langDict = null
   if (lang == "en") {
     langDict = lang_en;
   } else if (lang == "de") {
@@ -1407,10 +1753,7 @@ function page_set_language(lang) {
 
   for (var key in langDict) {
     try {
-      if (key.split("_")[1] == "context" ||
-       key == "txt_ask_del1" ||
-       key == "txt_ask_del2"
-      ){
+      if (key.split("_")[1] == "noObj"){
         continue
       }
       if (document.getElementById(key).classList.contains("noText") == false){
@@ -1539,6 +1882,13 @@ function settings_change_setting(type, bool){
     }
   }
 
+  if (type == 'objectSelectionNumber'){
+    if (bool){
+      localStorage.setItem("settings_objectSelection", "multi");
+    } else {
+      localStorage.setItem("settings_objectSelection", "single");
+    }
+  }
 }
 
 function settings_download_app(){
@@ -1585,6 +1935,7 @@ function settings_set_colour(type, elem){
   } else if (type == "wireframes"){
     change_colour_wireframes();
   } else {
+    menuObjects_changeIconColour(type);
     change_colour_object(type);
   }
 }
@@ -1622,8 +1973,8 @@ function settings_toggle_advanced(){
   }
 }
 
-function settings_toggle_licences(){
-
+function settings_toggleSelect(elem){
+  localStorage.setItem("viewer_select", elem.value);
 }
 
 function settings_toggle_settings(){

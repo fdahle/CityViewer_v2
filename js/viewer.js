@@ -660,6 +660,28 @@ function change_colour_wireframes() {
   });
 }
 
+function change_cloned_object_attributes(newFileId, newObjId, oldObjId){
+  scene.traverse(function(child) {
+    if (child.fileId == newFileId && child.name == oldObjId){
+      child.objId = newObjId;
+      child.name = newObjId;
+      return;
+    }
+  });
+}
+
+function clone_objects(oldFileId, newFileId){
+  scene.traverse(function(child) {
+    if (child.fileId == oldFileId){
+      var clone = child.clone();
+      clone.fileId = newFileId;
+      clone.fileVisible = true;
+      clone.meshVisible = true;
+      scene.add(clone);
+    }
+  });
+}
+
 function create_wireFrame(obj){
   var colour = localStorage.getItem("colour_wireframes");
 
@@ -759,7 +781,7 @@ function file_setVisibility(fileId, bool){
   var objIds = []
 
   scene.traverse(function(child) {
-    if (child.fileId == fileId){
+    if (child.type == "Mesh" && child.fileId == fileId){
       child.fileVisible = bool;
       mesh_toggleVisibility(child.objId, false);
     }
